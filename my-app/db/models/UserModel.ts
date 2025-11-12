@@ -5,8 +5,7 @@ import { signToken } from "@/helpers/jwt";
 
 const User = z.object({
   fullname: z.string().min(3, "Fullname must be at least 3 characters"),
-  name: z.string().min(3, "Name must be at least 3 characters"),
-  email: z.email("Invalid email format"),
+  email: z.string().email("Invalid email format"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
@@ -19,9 +18,7 @@ class UserModel {
 
   static async create(newUser: UserType) {
     User.parse(newUser);
-    const existingUser = await this.collection().findOne({
-      $or: [{ email: newUser.email }, { fullname: newUser.fullname }],
-    });
+    const existingUser = await this.collection().findOne({ email: newUser.email });
     if (existingUser) {
       throw { message: "Email or username already in use", status: 400 };
     }
