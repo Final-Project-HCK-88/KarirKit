@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
         message: "PDF uploaded successfully",
         data: {
           url: result.url,
+          viewUrl: result.viewUrl, // URL untuk view langsung di browser
           publicId: result.publicId,
           fileName: file.name,
           fileSize: file.size,

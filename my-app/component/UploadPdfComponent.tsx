@@ -4,6 +4,7 @@ import { useState } from "react";
 
 interface UploadResult {
   url: string;
+  viewUrl: string;
   publicId: string;
   fileName: string;
   fileSize: number;
@@ -125,27 +126,36 @@ export default function UploadPdfComponent() {
 
         {/* Success Result */}
         {result && (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-md space-y-2">
+          <div className="p-4 bg-green-50 border border-green-200 rounded-md space-y-3">
             <p className="text-sm font-semibold text-green-800">
               ✅ Upload Successful!
             </p>
-            <div className="text-sm text-gray-700 space-y-1">
+            <div className="text-sm text-gray-700 space-y-2">
               <p>
                 <strong>File:</strong> {result.fileName}
               </p>
               <p>
                 <strong>Size:</strong> {(result.fileSize / 1024).toFixed(2)} KB
               </p>
-              <p className="break-all">
-                <strong>URL:</strong>{" "}
+              <div className="flex gap-2">
                 <a
-                  href={result.url}
+                  href={result.viewUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
+                  className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
                 >
-                  View PDF
+                  📄 View PDF
                 </a>
+                <a
+                  href={result.url}
+                  download
+                  className="inline-block px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm font-medium"
+                >
+                  ⬇️ Download
+                </a>
+              </div>
+              <p className="text-xs text-gray-500 break-all">
+                <strong>Direct Link:</strong> {result.viewUrl}
               </p>
             </div>
           </div>

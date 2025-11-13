@@ -2,7 +2,7 @@ import cloudinary from "@/db/config/cloudinary";
 
 export async function uploadPdfToCloudinary(
   file: File
-): Promise<{ url: string; publicId: string }> {
+): Promise<{ url: string; publicId: string; viewUrl: string }> {
   try {
     // Convert File to buffer
     const arrayBuffer = await file.arrayBuffer();
@@ -13,19 +13,22 @@ export async function uploadPdfToCloudinary(
       cloudinary.uploader
         .upload_stream(
           {
-            resource_type: "auto", // Auto detect resource type
-            folder: "karirkit/resumes", // Folder di Cloudinary
-            type: "upload", // Public upload
-            access_mode: "public", // Make file publicly accessible
-            invalidate: true, // Invalidate CDN cache
+            resource_type: "raw",
+            folder: "karirkit/resumes",
+            type: "upload",
+            access_mode: "public",
           },
           (error, result) => {
             if (error) {
               reject(error);
             } else if (result) {
+              // URL asli dari Cloudinary - gunakan langsung tanpa modifikasi
+              const baseUrl = result.secure_url;
+
               resolve({
-                url: result.secure_url,
+                url: baseUrl, // URL download
                 publicId: result.public_id,
+                viewUrl: baseUrl, // URL view (sama dengan download untuk raw files)
               });
             } else {
               reject(new Error("Upload failed"));
