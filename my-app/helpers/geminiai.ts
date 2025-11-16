@@ -13,6 +13,190 @@ export async function generateGeminiContent(prompt: string) {
   return response.text;
 }
 
+// Create embeddings using Google AI (Gemini) or OpenAI API
+// Gemini is preferred as primary, with OpenAI as fallback
+export async function generateGeminiEmbedding(input: string | string[]) {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const openAiKey = process.env.OPENAI_API_KEY;
+
+  // Try Gemini first if available (primary)
+  if (geminiApiKey) {
+    try {
+      console.log("Using Gemini embeddings (primary)...");
+      const model =
+        process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
+      console.log(`Using Gemini model: ${model}`);
+      const text = Array.isArray(input) ? input[0] : input;
+
+      const requestBody: {
+        content: { parts: { text: string }[] };
+        outputDimensionality?: number;
+      } = {
+        content: {
+          parts: [{ text }],
+        },
+        // Set to 1536 to match MongoDB vector index
+        outputDimensionality: 1536,
+      };
+
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${geminiApiKey}`;
+      console.log(
+        `Gemini API URL: ${apiUrl.replace(geminiApiKey, "API_KEY_HIDDEN")}`
+      );
+      console.log(`Request body:`, JSON.stringify(requestBody, null, 2));
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      // Check response status
+      if (!response.ok) {
+        const responseText = await response.text();
+        console.error(`Gemini API HTTP ${response.status}: ${responseText}`);
+
+        // If 404, might be wrong model name or endpoint
+        if (response.status === 404) {
+          console.error(
+            `Model "${model}" not found. Check if model name is correct.`
+          );
+          console.error(
+            `Available models: gemini-embedding-001, text-embedding-004`
+          );
+        }
+
+        throw new Error(
+          `Gemini API error (${response.status}): ${responseText.substring(
+            0,
+            200
+          )}`
+        );
+      }
+
+      // Get response text first to handle empty responses
+      const responseText = await response.text();
+      if (!responseText || responseText.trim().length === 0) {
+        throw new Error("Gemini API returned empty response");
+      }
+
+      // Parse JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.error(
+          "Failed to parse Gemini response:",
+          responseText.substring(0, 500)
+        );
+        throw new Error(`Gemini API returned invalid JSON: ${parseErr}`);
+      }
+      const embedding = data?.embedding?.values;
+
+      if (!embedding || !Array.isArray(embedding)) {
+        console.error(
+          "Invalid Gemini embedding response:",
+          JSON.stringify(data)
+        );
+        throw new Error("Gemini embeddings response missing embedding values");
+      }
+
+      // Validate dimension size
+      console.log(`Gemini embedding generated: ${embedding.length} dimensions`);
+
+      if (embedding.length !== 1536) {
+        console.warn(
+          `Warning: Expected 1536 dimensions but got ${embedding.length}`
+        );
+        // If dimension is wrong, try OpenAI fallback
+        throw new Error(
+          `Gemini dimension mismatch: expected 1536 but got ${embedding.length}`
+        );
+      }
+
+      return embedding;
+    } catch (geminiErr: unknown) {
+      // Handle specific error types
+      if (geminiErr instanceof Error) {
+        if (geminiErr.name === "AbortError") {
+          console.error("Gemini API request timeout (30s exceeded)");
+        } else {
+          console.error("Gemini embedding error:", geminiErr.message);
+        }
+      } else {
+        console.error("Gemini embedding error:", geminiErr);
+      }
+      console.log("Attempting OpenAI fallback...");
+      // Fall through to try OpenAI
+    }
+  }
+
+  // Fallback to OpenAI if Gemini is not available or failed
+  if (!openAiKey) {
+    throw new Error(
+      "Neither GEMINI_API_KEY nor OPENAI_API_KEY found in environment variables"
+    );
+  }
+
+  try {
+    console.log("Using OpenAI embeddings (fallback)...");
+    const openaiModel =
+      process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-ada-002";
+    const resp = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${openAiKey}`,
+      },
+      body: JSON.stringify({
+        model: openaiModel,
+        input: Array.isArray(input) ? input[0] : input,
+        // text-embedding-ada-002 always returns 1536 dimensions
+        // text-embedding-3-small can be configured with dimensions parameter
+        ...(openaiModel === "text-embedding-3-small" && { dimensions: 1536 }),
+      }),
+    });
+
+    if (!resp.ok) {
+      const errorData = await resp.json();
+      throw new Error(`OpenAI API error: ${JSON.stringify(errorData)}`);
+    }
+
+    const data = await resp.json();
+    const embedding = data?.data?.[0]?.embedding;
+
+    if (!embedding || !Array.isArray(embedding)) {
+      throw new Error("OpenAI embeddings response missing embedding");
+    }
+
+    console.log(`OpenAI embedding generated: ${embedding.length} dimensions`);
+
+    if (embedding.length !== 1536) {
+      throw new Error(
+        `OpenAI dimension mismatch: expected 1536 but got ${embedding.length}`
+      );
+    }
+
+    return embedding;
+  } catch (openErr: unknown) {
+    console.error(
+      "OpenAI embedding error:",
+      openErr instanceof Error ? openErr.message : openErr
+    );
+    throw new Error(
+      "Failed to generate embeddings from both Gemini and OpenAI. Please check your API keys and try again."
+    );
+  }
+}
+
 /**
  * Match jobs with AI using REAL-TIME data from LinkedIn API
  * Flow: User preferences → Fetch from LinkedIn → AI filtering → Top 5 matches
