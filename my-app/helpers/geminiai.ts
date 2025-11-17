@@ -13,9 +13,72 @@ export async function generateGeminiContent(prompt: string) {
   return response.text;
 }
 
+/**
+ * Preprocess text untuk meningkatkan kualitas embedding
+ */
+function preprocessTextForEmbedding(text: string): string {
+  // 1. Lowercase untuk konsistensi
+  let processed = text.toLowerCase();
+
+  // 2. Remove extra whitespace
+  processed = processed.replace(/\s+/g, " ").trim();
+
+  // 3. Remove special characters yang tidak penting (opsional, tergantung use case)
+  // processed = processed.replace(/[^\w\s.,!?-]/g, '');
+
+  // 4. Limit panjang text (embedding models punya token limit)
+  // Gemini embedding models biasanya support ~2048 tokens
+  const maxLength = 8000; // ~2000 tokens
+  if (processed.length > maxLength) {
+    processed = processed.substring(0, maxLength);
+    console.warn(`Text truncated to ${maxLength} characters for embedding`);
+  }
+
+  return processed;
+}
+
+/**
+ * Add context atau metadata ke text untuk embedding yang lebih kaya
+ */
+function enrichTextWithContext(
+  text: string,
+  metadata?: {
+    title?: string;
+    category?: string;
+    tags?: string[];
+  }
+): string {
+  if (!metadata) return text;
+
+  let enrichedText = text;
+
+  // Tambahkan title sebagai konteks penting
+  if (metadata.title) {
+    enrichedText = `Title: ${metadata.title}\n\n${enrichedText}`;
+  }
+
+  // Tambahkan category
+  if (metadata.category) {
+    enrichedText = `Category: ${metadata.category}\n${enrichedText}`;
+  }
+
+  // Tambahkan tags
+  if (metadata.tags && metadata.tags.length > 0) {
+    enrichedText = `${enrichedText}\n\nTags: ${metadata.tags.join(", ")}`;
+  }
+
+  return enrichedText;
+}
+
 // Create embeddings using Google AI (Gemini) or OpenAI API
 // Gemini is preferred as primary, with OpenAI as fallback
-export async function generateGeminiEmbedding(input: string | string[]) {
+export async function generateGeminiEmbedding(
+  input: string | string[],
+  options?: {
+    preprocess?: boolean;
+    metadata?: { title?: string; category?: string; tags?: string[] };
+  }
+) {
   const geminiApiKey = process.env.GEMINI_API_KEY;
   const openAiKey = process.env.OPENAI_API_KEY;
 
@@ -23,10 +86,20 @@ export async function generateGeminiEmbedding(input: string | string[]) {
   if (geminiApiKey) {
     try {
       console.log("Using Gemini embeddings (primary)...");
-      const model =
-        process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
+      const model = process.env.GEMINI_EMBEDDING_MODEL || "text-embedding-004"; // Updated default to newer model
       console.log(`Using Gemini model: ${model}`);
-      const text = Array.isArray(input) ? input[0] : input;
+      let text = Array.isArray(input) ? input[0] : input;
+
+      // Apply preprocessing if enabled
+      if (options?.preprocess !== false) {
+        // Default true
+        text = preprocessTextForEmbedding(text);
+      }
+
+      // Apply context enrichment if metadata provided
+      if (options?.metadata) {
+        text = enrichTextWithContext(text, options.metadata);
+      }
 
       const requestBody: {
         content: { parts: { text: string }[] };
