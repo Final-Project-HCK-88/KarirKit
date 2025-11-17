@@ -18,16 +18,26 @@ class UserModel {
 
   static async create(newUser: UserType) {
     User.parse(newUser);
-    const existingUser = await this.collection().findOne({ email: newUser.email });
+    const existingUser = await this.collection().findOne({
+      email: newUser.email,
+    });
     if (existingUser) {
       throw { message: "Email or username already in use", status: 400 };
     }
     const hashedPassword = hashPassword(newUser.password);
     newUser.password = hashedPassword;
-    const result = await this.collection().insertOne(newUser);
+    const userData = {
+      fullname: newUser.fullname,
+      email: newUser.email,
+      password: hashedPassword,
+      image: null,
+    };
+
+    const result = await this.collection().insertOne(userData);
+
     return {
       id: result.insertedId,
-      ...newUser,
+      ...userData,
     };
   }
 
@@ -43,6 +53,23 @@ class UserModel {
 
     const token = signToken({ id: user._id, email: user.email });
     return { token };
+  }
+  static async getByEmail(email: string) {
+    const col = await this.collection();
+    const user = await col.findOne({ email });
+
+    if (!user) throw { message: "User not found", status: 404 };
+
+    return user;
+  }
+  static async updateProfile(email: string, updates: Partial<UserType>) {
+    const col = await this.collection();
+    const result = await col.updateOne({ email }, { $set: updates });
+
+    if (result.matchedCount === 0) {
+      throw { message: "User not found", status: 404 };
+    }
+    return result;
   }
 }
 
