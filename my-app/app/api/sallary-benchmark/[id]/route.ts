@@ -7,6 +7,7 @@ import {
   generateGeminiEmbedding,
   generateGeminiContent,
 } from "@/helpers/geminiai";
+import { JWTPayload } from "@/types/jwt";
 
 export async function GET(
   request: NextRequest,
@@ -17,26 +18,17 @@ export async function GET(
     if (!id)
       return NextResponse.json({ message: "id required" }, { status: 400 });
 
-    // verify token
     const authHeader = request.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json(
-        { message: "Unauthorized. Please login first." },
+        { message: "Unauthorized. Authentication token required." },
         { status: 401 }
       );
     }
 
-    let userId: string | undefined;
-    try {
-      const token = authHeader.substring(7);
-      const decoded = verifyToken(token) as { userId?: string };
-      userId = decoded.userId;
-    } catch (err) {
-      return NextResponse.json(
-        { message: "Invalid or expired token" },
-        { status: 401 }
-      );
-    }
+    const token = authHeader.substring(7);
+    const decoded = verifyToken(token) as JWTPayload;
+    const userId = decoded.userId;
 
     const requestDoc = await SalaryRequestModel.getById(id);
     if (!requestDoc)

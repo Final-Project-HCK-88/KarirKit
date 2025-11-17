@@ -1,16 +1,17 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import errorHandler from "@/helpers/errHandler";
 
 export async function POST() {
   try {
-    const cookieStore = await cookies();
-
-    // Hapus token dari cookies
-    cookieStore.delete("token");
-
-    return NextResponse.json({ message: "Logout successful" }, { status: 200 });
+    // Client-side akan handle penghapusan token dari localStorage
+    // Server-side logout tidak perlu logic khusus untuk stateless JWT
+    return NextResponse.json(
+      {
+        message: "Logout successful. Please remove token from client storage.",
+      },
+      { status: 200 }
+    );
   } catch (error) {
-    console.error("Logout error:", error);
-    return NextResponse.json({ message: "Logout failed" }, { status: 500 });
+    return errorHandler(error);
   }
 }
