@@ -12,6 +12,13 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      // After successful Google login, redirect to dashboard
+      if (url.startsWith(baseUrl)) {
+        return `${baseUrl}/dashboard`;
+      }
+      return baseUrl;
+    },
     async signIn({ user, account }) {
       try {
         // Koneksi ke MongoDB
@@ -97,7 +104,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: "/", // Redirect ke home page untuk login
+    signIn: "/login", // Redirect ke login page
   },
   session: {
     strategy: "jwt",
