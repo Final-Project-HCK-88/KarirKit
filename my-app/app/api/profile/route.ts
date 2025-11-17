@@ -4,19 +4,28 @@ import cloudinary from "@/helpers/cloudinary";
 import errorHandler from "@/helpers/errHandler";
 import { NextResponse } from "next/server";
 import { JWTPayload } from "@/types/jwt";
+import { cookies } from "next/headers";
 
 export async function GET(request: Request) {
   try {
+    // Try to get token from Authorization header first, then fall back to cookies
+    let token: string | undefined;
     const authHeader = request.headers.get("authorization");
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7);
+    } else {
+      // Get token from cookies
+      const cookieStore = await cookies();
+      token = cookieStore.get("token")?.value;
+    }
+
+    if (!token) {
       return NextResponse.json(
         { message: "Unauthorized. Authentication token required." },
         { status: 401 }
       );
     }
-
-    const token = authHeader.substring(7);
     const decoded = verifyToken(token) as JWTPayload;
     const user = await UserModel.getByEmail(decoded.email);
 
@@ -35,16 +44,24 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    // Try to get token from Authorization header first, then fall back to cookies
+    let token: string | undefined;
     const authHeader = request.headers.get("authorization");
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7);
+    } else {
+      // Get token from cookies
+      const cookieStore = await cookies();
+      token = cookieStore.get("token")?.value;
+    }
+
+    if (!token) {
       return NextResponse.json(
         { message: "Unauthorized. Authentication token required." },
         { status: 401 }
       );
     }
-
-    const token = authHeader.substring(7);
     const decoded = verifyToken(token) as JWTPayload;
 
     const formData = await request.formData();

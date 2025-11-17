@@ -1,4 +1,4 @@
-import UploadPdfComponent from "@/component/UploadPdfComponent";
+import UploadPdfComponent from "@/components/UploadPdfComponent";
 
 export default function UploadPage() {
   return (

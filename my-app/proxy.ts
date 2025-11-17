@@ -22,25 +22,23 @@ export async function proxy(request: NextRequest) {
   // Semua endpoint lainnya butuh authorization
   console.log("🔒 Protected endpoint:", pathname);
 
+  // Try to get token from Authorization header first, then fall back to cookies
+  let token: string | undefined;
   const authHeader =
     request.headers.get("authorization") ||
     request.headers.get("Authorization");
 
-  if (!authHeader) {
-    console.log("❌ No authorization header");
-    return NextResponse.json(
-      { message: "Unauthorized. Authentication token required." },
-      { status: 401 }
-    );
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.split(" ")[1];
+  } else {
+    // Get token from cookies
+    token = request.cookies.get("token")?.value;
   }
 
-  // Ekstrak token dari "Bearer <token>"
-  const token = authHeader.split(" ")[1];
-
   if (!token) {
-    console.log("❌ Invalid token format");
+    console.log("❌ No authorization token found in header or cookies");
     return NextResponse.json(
-      { message: "Unauthorized. Invalid token format." },
+      { message: "Unauthorized. Authentication token required." },
       { status: 401 }
     );
   }
