@@ -51,7 +51,7 @@ class UserModel {
       throw { message: "Invalid email or password", status: 401 };
     }
 
-    const token = signToken({ id: user._id, email: user.email });
+    const token = signToken({ userId: user._id.toString(), email: user.email });
     return { token };
   }
   static async getByEmail(email: string) {

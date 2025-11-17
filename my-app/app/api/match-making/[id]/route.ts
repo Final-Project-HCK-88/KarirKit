@@ -3,6 +3,7 @@ import errorHandler from "@/helpers/errHandler";
 import { matchJobsWithAIRealtime } from "@/helpers/geminiai";
 import { verifyToken } from "@/helpers/jwt";
 import { NextRequest, NextResponse } from "next/server";
+import { JWTPayload } from "@/types/jwt";
 
 export async function GET(
   request: NextRequest,
@@ -19,33 +20,23 @@ export async function GET(
       );
     }
 
-    // Verifikasi token - REQUIRED
     const authHeader = request.headers.get("authorization");
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json(
-        { message: "Unauthorized. Please login first." },
+        { message: "Unauthorized. Authentication token required." },
         { status: 401 }
       );
     }
 
-    let loggedInUserId: string;
-    try {
-      const token = authHeader.substring(7);
-      const decoded = verifyToken(token) as { userId: string };
-      loggedInUserId = decoded.userId;
-    } catch (error) {
-      console.error("Token verification failed:", error);
-      return NextResponse.json(
-        { message: "Invalid or expired token. Please login again." },
-        { status: 401 }
-      );
-    }
+    const token = authHeader.substring(7);
+    const decoded = verifyToken(token) as JWTPayload;
+    const userId = decoded.userId;
 
     // Ambil preferences user dari database dan validasi bahwa preferences ini milik user yang login
     const preferences = await UserPreferencesModel.getPreferencesById(
       preferencesId,
-      loggedInUserId
+      userId
     );
 
     if (!preferences) {

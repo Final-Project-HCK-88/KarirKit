@@ -1,20 +1,15 @@
 import UserModel from "@/db/models/UserModel";
 import errorHandler from "@/helpers/errHandler";
-import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
-  const { email, password } = await req.json();
   try {
+    const { email, password } = await req.json();
     const data = await UserModel.login({ email, password });
 
     console.log(data, "<<< DATA TOKEN");
 
-    if (data.token) {
-      const cookiesStore = await cookies();
-      cookiesStore.set("Authorization", `Bearer ${data.token}`);
-    }
-
-    return Response.json(
+    return NextResponse.json(
       {
         message: "User logged in successfully",
         access_token: data.token,
