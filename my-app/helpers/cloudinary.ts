@@ -8,27 +8,41 @@ export async function uploadPdfToCloudinary(
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload to Cloudinary
+    // Generate filename tanpa extension (Cloudinary akan tambahkan otomatis)
+    const timestamp = Date.now();
+    const sanitizedName = file.name
+      .replace(/\.pdf$/i, "") // Hapus .pdf jika ada
+      .replace(/[^a-zA-Z0-9]/g, "_") // Replace special chars dengan underscore
+      .toLowerCase();
+    const filename = `${sanitizedName}_${timestamp}`;
+
+    // Upload to Cloudinary dengan format specified dan flags untuk akses
     return new Promise((resolve, reject) => {
       cloudinary.uploader
         .upload_stream(
           {
             resource_type: "raw",
             folder: "karirkit/resumes",
+            public_id: filename,
+            format: "pdf", // Specify format as pdf
             type: "upload",
             access_mode: "public",
+            // Tambahkan flags untuk attachment download, bypass untrusted check
+            flags: "attachment",
           },
           (error, result) => {
             if (error) {
+              console.error("Cloudinary upload error:", error);
               reject(error);
             } else if (result) {
-              // URL asli dari Cloudinary - gunakan langsung tanpa modifikasi
+              console.log("Upload success:", result.secure_url);
+              // Cloudinary seharusnya return URL dengan .pdf
               const baseUrl = result.secure_url;
 
               resolve({
-                url: baseUrl, // URL download
+                url: baseUrl,
                 publicId: result.public_id,
-                viewUrl: baseUrl, // URL view (sama dengan download untuk raw files)
+                viewUrl: baseUrl,
               });
             } else {
               reject(new Error("Upload failed"));
