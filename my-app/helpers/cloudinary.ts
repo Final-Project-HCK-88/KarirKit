@@ -7,7 +7,6 @@ cloudinary.config({
 });
 
 export default cloudinary;
-import cloudinary from "@/db/config/cloudinary";
 
 export async function uploadPdfToCloudinary(
   file: File

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Upload, Loader } from "lucide-react"
 import { ContractAnalysisResult } from "@/components/contract-analysis-result"
+import UploadPdfComponent from "@/components/UploadPdfComponent"
 
 interface AnalysisResult {
   redFlags: string[]
@@ -98,7 +99,7 @@ export default function ContractAnalysisPage() {
                 className="w-full min-h-32 p-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
                 defaultValue="Standard Software Engineer Employment Agreement..."
               />
-
+              {/* <UploadPdfComponent/> */}
               <Button className="w-full" onClick={handleAnalyze}>
                 Analyze Contract
               </Button>
