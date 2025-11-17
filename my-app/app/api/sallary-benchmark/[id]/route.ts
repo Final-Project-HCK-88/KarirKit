@@ -48,12 +48,38 @@ export async function GET(
     // Build a short query text from the request
     const queryText = `JobTitle: ${requestDoc.jobTitle}; Location: ${requestDoc.location}; Experience: ${requestDoc.experienceYear} years; CurrentOrOfferedSalary: ${requestDoc.currentOrOfferedSallary}`;
 
-    // embedding for query
-    const queryEmbedding = await generateGeminiEmbedding(queryText);
+    // embedding for query with metadata enrichment
+    const queryEmbedding = await generateGeminiEmbedding(queryText, {
+      metadata: {
+        title: requestDoc.jobTitle,
+        category: "salary_benchmark",
+        tags: [
+          requestDoc.location,
+          `${requestDoc.experienceYear} years experience`,
+        ],
+      },
+    });
 
-    // search KB vector store - retrieve more chunks for richer context
+    // search KB vector store using hybrid search (vector + keyword) for better accuracy
     const topK = 15;
-    const nearest = await KBVectorModel.knnSearch(queryEmbedding, topK);
+    const keywords = [
+      requestDoc.jobTitle,
+      requestDoc.location,
+      "salary",
+      "gaji",
+      `${requestDoc.experienceYear} tahun`,
+    ];
+
+    const nearest = await KBVectorModel.hybridSearch(
+      queryEmbedding,
+      keywords,
+      topK,
+      {
+        vectorWeight: 0.7,
+        keywordWeight: 0.3,
+        minScore: 0.6, // Filter hasil dengan score rendah
+      }
+    );
 
     const contexts = nearest
       .map(
