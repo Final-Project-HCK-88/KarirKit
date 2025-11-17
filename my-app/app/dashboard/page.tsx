@@ -20,11 +20,11 @@ import {
 
 const features = [
   {
-    title: "Analyze Contract",
-    description: "Upload and analyze job contracts for red flags and benefits",
+    title: "Contract Analysis",
+    description: "Upload and analyze job contracts or resumes with AI",
     icon: FileText,
     href: "/dashboard/contract-analysis",
-    color: "from-blue-500 to-blue-600",
+    color: "from-orange-500 to-orange-600",
   },
   {
     title: "Salary Benchmark",
@@ -35,7 +35,7 @@ const features = [
   },
   {
     title: "Job Matching",
-    description: "Analyze job descriptions and find skill gaps",
+    description: "Find jobs that match your preferences and skills",
     icon: Briefcase,
     href: "/dashboard/job-matching",
     color: "from-purple-500 to-purple-600",

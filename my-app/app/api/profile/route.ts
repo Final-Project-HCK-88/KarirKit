@@ -1,24 +1,22 @@
-import { verifyToken } from "@/helpers/jwt";
 import UserModel from "@/db/models/UserModel";
 import cloudinary from "@/helpers/cloudinary";
 import errorHandler from "@/helpers/errHandler";
 import { NextResponse } from "next/server";
-import { JWTPayload } from "@/types/jwt";
 
 export async function GET(request: Request) {
   try {
-    const authHeader = request.headers.get("authorization");
+    // User data already verified by middleware, get from injected headers
+    const userId = request.headers.get("X-User-Id");
+    const email = request.headers.get("X-User-Email");
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!userId || !email) {
       return NextResponse.json(
         { message: "Unauthorized. Authentication token required." },
         { status: 401 }
       );
     }
 
-    const token = authHeader.substring(7);
-    const decoded = verifyToken(token) as JWTPayload;
-    const user = await UserModel.getByEmail(decoded.email);
+    const user = await UserModel.getByEmail(email);
 
     return NextResponse.json(
       {
@@ -35,17 +33,16 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const authHeader = request.headers.get("authorization");
+    // User data already verified by middleware, get from injected headers
+    const userId = request.headers.get("X-User-Id");
+    const email = request.headers.get("X-User-Email");
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!userId || !email) {
       return NextResponse.json(
         { message: "Unauthorized. Authentication token required." },
         { status: 401 }
       );
     }
-
-    const token = authHeader.substring(7);
-    const decoded = verifyToken(token) as JWTPayload;
 
     const formData = await request.formData();
     const fullname = formData.get("fullname") as string;
@@ -59,20 +56,23 @@ export async function PUT(request: Request) {
       const buffer = Buffer.from(arrayBuffer);
 
       // Upload ke Cloudinary
-      const uploadResult = await new Promise((resolve, reject) => {
-        cloudinary.uploader
-          .upload_stream({ folder: "karirkit" }, (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          })
-          .end(buffer);
-      });
+      const uploadResult = await new Promise<{ secure_url: string }>(
+        (resolve, reject) => {
+          cloudinary.uploader
+            .upload_stream({ folder: "karirkit" }, (error, result) => {
+              if (error) reject(error);
+              else if (result) resolve(result);
+              else reject(new Error("Upload failed"));
+            })
+            .end(buffer);
+        }
+      );
 
       imageUrl = uploadResult.secure_url;
     }
 
     // Update MongoDB
-    await UserModel.updateProfile(decoded.email, {
+    const updatedUser = await UserModel.updateProfile(email, {
       fullname,
       ...(imageUrl && { image: imageUrl }),
     });
@@ -80,7 +80,11 @@ export async function PUT(request: Request) {
     return NextResponse.json(
       {
         message: "Profile updated successfully",
-        image: imageUrl,
+        data: {
+          fullname: updatedUser.fullname,
+          email: updatedUser.email,
+          image: updatedUser.image,
+        },
       },
       { status: 200 }
     );

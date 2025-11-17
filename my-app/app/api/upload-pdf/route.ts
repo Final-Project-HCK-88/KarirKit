@@ -165,15 +165,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         message: "File uploaded and processed successfully",
-        data: {
-          resumeId: resume._id.toString(),
-          fileUrl: imageUrl,
-          fileName: file.name,
-          fileSize: file.size,
-          textExtracted: extractedText.length > 0,
-          textLength: extractedText.length,
-          textPreview: extractedText.substring(0, 200),
-        },
+        url: imageUrl,
+        resumeId: resume._id.toString(),
+        fileName: file.name,
+        fileSize: file.size,
+        extractedText: extractedText,
+        textLength: extractedText.length,
       },
       { status: 200 }
     );

@@ -108,11 +108,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await fetch("/api/logout", {
         method: "POST",
+        credentials: "include",
       });
+
+      // Hapus token dari cookies
+      document.cookie = "token=; path=/; max-age=0";
+
       setUser(null);
-      router.push("/");
+      router.push("/login");
     } catch (error) {
       console.error("Logout failed:", error);
+      // Tetap hapus cookie dan redirect meskipun API gagal
+      document.cookie = "token=; path=/; max-age=0";
+      setUser(null);
+      router.push("/login");
     }
   };
 
@@ -139,6 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const response = await fetch("/api/profile", {
       method: "PUT",
+      credentials: "include", // Send cookies
       body: formData,
     });
 
@@ -147,8 +157,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(error.message || "Failed to update profile");
     }
 
-    // Refresh user data after update
-    await checkAuth();
+    const data = await response.json();
+
+    // Update user state dengan data baru
+    if (data.data && user) {
+      setUser({
+        ...user,
+        fullname: data.data.fullname,
+        image: data.data.image,
+      });
+    } else {
+      // Fallback: refresh user data from API
+      await checkAuth();
+    }
+
+    return data;
   };
 
   const refreshUser = async () => {

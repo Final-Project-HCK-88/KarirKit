@@ -6,8 +6,23 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Upload, User as UserIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  Upload,
+  User as UserIcon,
+  FileText,
+  ExternalLink,
+  Trash2,
+} from "lucide-react";
 import Image from "next/image";
+
+interface UserCV {
+  _id: string;
+  link: string;
+  text: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function ProfilePage() {
   const { user, updateProfile, refreshUser } = useAuth();
@@ -18,12 +33,36 @@ export default function ProfilePage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [error, setError] = useState("");
 
+  // CV states
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [isUploadingCV, setIsUploadingCV] = useState(false);
+  const [userCV, setUserCV] = useState<UserCV | null>(null);
+  const [cvError, setCvError] = useState("");
+
   useEffect(() => {
     if (user) {
       setFullname(user.fullname || "");
       setImagePreview(user.image || null);
     }
   }, [user]);
+
+  // Fetch user's CV
+  useEffect(() => {
+    fetchUserCV();
+  }, []);
+
+  const fetchUserCV = async () => {
+    try {
+      const response = await fetch("/api/cv");
+      const data = await response.json();
+
+      if (data.hasCV && data.cv) {
+        setUserCV(data.cv);
+      }
+    } catch (error) {
+      console.error("Error fetching CV:", error);
+    }
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -58,6 +97,103 @@ export default function ProfilePage() {
     setImagePreview(user?.image || null);
     setImageFile(null);
     setError("");
+  };
+
+  const handleCVFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type !== "application/pdf") {
+        setCvError("Please upload a PDF file");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setCvError("File size must be less than 10MB");
+        return;
+      }
+      setCvFile(file);
+      setCvError("");
+    }
+  };
+
+  const handleCVUpload = async () => {
+    if (!cvFile) return;
+
+    setIsUploadingCV(true);
+    setCvError("");
+
+    try {
+      // Step 1: Upload PDF to get extracted text
+      const formData = new FormData();
+      formData.append("file", cvFile);
+
+      const uploadResponse = await fetch("/api/upload-pdf", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("Failed to upload PDF");
+      }
+
+      const uploadData = await uploadResponse.json();
+      console.log("Upload response:", uploadData);
+
+      // Step 2: Save CV to database
+      const saveResponse = await fetch("/api/cv", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          link: uploadData.url,
+          text: uploadData.extractedText,
+        }),
+      });
+
+      if (!saveResponse.ok) {
+        throw new Error("Failed to save CV");
+      }
+
+      const saveData = await saveResponse.json();
+      console.log("CV saved:", saveData);
+
+      // Refresh CV data
+      await fetchUserCV();
+      setCvFile(null);
+
+      // Reset file input
+      const fileInput = document.getElementById(
+        "cv-upload"
+      ) as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+    } catch (error) {
+      console.error("Error uploading CV:", error);
+      setCvError(
+        error instanceof Error ? error.message : "Failed to upload CV"
+      );
+    } finally {
+      setIsUploadingCV(false);
+    }
+  };
+
+  const handleDeleteCV = async () => {
+    if (!confirm("Are you sure you want to delete your CV?")) return;
+
+    try {
+      const response = await fetch("/api/cv", {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete CV");
+      }
+
+      setUserCV(null);
+      setCvFile(null);
+    } catch (error) {
+      console.error("Error deleting CV:", error);
+      setCvError(
+        error instanceof Error ? error.message : "Failed to delete CV"
+      );
+    }
   };
 
   return (
@@ -143,6 +279,100 @@ export default function ProfilePage() {
                 </p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* CV Upload */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Curriculum Vitae (CV)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {userCV ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-accent/50">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-8 w-8 text-primary" />
+                    <div>
+                      <p className="font-medium">CV Uploaded</p>
+                      <p className="text-sm text-muted-foreground">
+                        Last updated:{" "}
+                        {new Date(userCV.updatedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <a
+                        href={userCV.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View
+                      </a>
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleDeleteCV}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Your CV is used to auto-fill job matching and salary benchmark
+                  forms.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {cvError && (
+                  <div className="text-sm text-destructive bg-destructive/10 p-3 rounded">
+                    {cvError}
+                  </div>
+                )}
+                <div className="border-2 border-dashed rounded-lg p-8 text-center">
+                  <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+                  <p className="font-medium mb-2">Upload your CV</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    PDF format, max 10MB
+                  </p>
+                  <div className="flex flex-col items-center gap-3">
+                    <Input
+                      id="cv-upload"
+                      type="file"
+                      accept="application/pdf"
+                      onChange={handleCVFileChange}
+                      className="max-w-sm"
+                    />
+                    {cvFile && (
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <span className="text-sm font-medium">
+                          {cvFile.name}
+                        </span>
+                      </div>
+                    )}
+                    <Button
+                      onClick={handleCVUpload}
+                      disabled={!cvFile || isUploadingCV}
+                    >
+                      {isUploadingCV ? "Uploading..." : "Upload CV"}
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Your CV will be used to automatically fill job matching and
+                  salary benchmark forms.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

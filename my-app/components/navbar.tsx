@@ -3,15 +3,12 @@
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
 
 export function Navbar() {
   const { user, logout } = useAuth();
-  const router = useRouter();
 
-  const handleLogout = () => {
-    logout();
-    router.push("/");
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (

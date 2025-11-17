@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, RotateCw } from "lucide-react";
 import Link from "next/link";
 import {
   BarChart,
@@ -53,21 +52,9 @@ export function SalaryBenchmarkResult({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Your Salary Analysis</h1>
-          <p className="text-muted-foreground">
-            Market insights for {jobTitle}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" /> Download PDF
-          </Button>
-          <Button variant="outline" size="sm" onClick={onReset}>
-            <RotateCw className="h-4 w-4 mr-2" /> New Search
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold mb-2">Your Salary Analysis</h1>
+        <p className="text-muted-foreground">Market insights for {jobTitle}</p>
       </div>
 
       {/* Key Metrics */}
@@ -80,7 +67,7 @@ export function SalaryBenchmarkResult({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${(result.min / 1000).toFixed(0)}K
+              Rp {(result.min / 1000000).toFixed(1)}jt
             </div>
           </CardContent>
         </Card>
@@ -92,7 +79,7 @@ export function SalaryBenchmarkResult({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">
-              ${(result.median / 1000).toFixed(0)}K
+              Rp {(result.median / 1000000).toFixed(1)}jt
             </div>
           </CardContent>
         </Card>
@@ -104,7 +91,7 @@ export function SalaryBenchmarkResult({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${(result.max / 1000).toFixed(0)}K
+              Rp {(result.max / 1000000).toFixed(1)}jt
             </div>
           </CardContent>
         </Card>
@@ -124,7 +111,7 @@ export function SalaryBenchmarkResult({
                   : "text-blue-600"
               }`}
             >
-              ${(result.yourSalary / 1000).toFixed(0)}K
+              Rp {(result.yourSalary / 1000000).toFixed(1)}jt
             </div>
           </CardContent>
         </Card>
@@ -159,7 +146,7 @@ export function SalaryBenchmarkResult({
               <YAxis />
               <Tooltip
                 formatter={(value) =>
-                  `$${((value as number) / 1000).toFixed(0)}K`
+                  `Rp ${((value as number) / 1000000).toFixed(1)}jt`
                 }
               />
               <Bar dataKey="value" fill="#3b82f6">

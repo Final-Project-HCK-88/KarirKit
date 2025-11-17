@@ -31,6 +31,7 @@ class UserModel {
       email: newUser.email,
       password: hashedPassword,
       image: null,
+      userCV: null,
     };
 
     const result = await this.collection().insertOne(userData);

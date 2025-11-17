@@ -4,13 +4,25 @@ import { database } from "@/db/config/mongodb";
 import { signToken } from "@/helpers/jwt";
 import { cookies } from "next/headers";
 
+// Debug: Check env variables
+console.log(
+  "🔑 GOOGLE_CLIENT_ID:",
+  process.env.GOOGLE_CLIENT_ID?.substring(0, 20) + "..."
+);
+console.log("🔑 NEXTAUTH_URL:", process.env.NEXTAUTH_URL);
+console.log(
+  "🔑 NEXTAUTH_SECRET:",
+  process.env.NEXTAUTH_SECRET ? "✅ Set" : "❌ Not set"
+);
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
-      clientId: process.env.Client_ID as string,
-      clientSecret: process.env.Client_Secret as string,
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
     }),
   ],
+  debug: true, // Enable debug mode
   callbacks: {
     async redirect({ url, baseUrl }) {
       // After successful Google login, redirect to dashboard
@@ -19,7 +31,12 @@ export const authOptions: NextAuthOptions = {
       }
       return baseUrl;
     },
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
+      console.log("🔐 signIn callback triggered");
+      console.log("👤 User:", user.email);
+      console.log("🔗 Account provider:", account?.provider);
+      console.log("📋 Profile:", profile?.email);
+
       try {
         // Koneksi ke MongoDB
         const usersCollection = database.collection("users");
