@@ -122,38 +122,22 @@ export default function ProfilePage() {
     setCvError("");
 
     try {
-      // Step 1: Upload PDF to get extracted text
+      // Upload CV using the correct endpoint
       const formData = new FormData();
       formData.append("file", cvFile);
 
-      const uploadResponse = await fetch("/api/upload-pdf", {
+      const uploadResponse = await fetch("/api/cv/upload", {
         method: "POST",
         body: formData,
       });
 
       if (!uploadResponse.ok) {
-        throw new Error("Failed to upload PDF");
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.error || "Failed to upload CV");
       }
 
       const uploadData = await uploadResponse.json();
-      console.log("Upload response:", uploadData);
-
-      // Step 2: Save CV to database
-      const saveResponse = await fetch("/api/cv", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          link: uploadData.url,
-          text: uploadData.extractedText,
-        }),
-      });
-
-      if (!saveResponse.ok) {
-        throw new Error("Failed to save CV");
-      }
-
-      const saveData = await saveResponse.json();
-      console.log("CV saved:", saveData);
+      console.log("CV uploaded successfully:", uploadData);
 
       // Refresh CV data
       await fetchUserCV();

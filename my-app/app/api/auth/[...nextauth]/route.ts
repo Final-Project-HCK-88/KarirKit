@@ -7,8 +7,8 @@ import { cookies } from "next/headers";
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
-      clientId: process.env.Client_ID as string,
-      clientSecret: process.env.Client_Secret as string,
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
     }),
   ],
   callbacks: {
