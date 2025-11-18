@@ -23,7 +23,7 @@ class SalaryRequestModel {
       ...request,
       createdAt: new Date(),
     });
-    return { id: result.insertedId, ...request };
+    return { _id: result.insertedId, ...request };
   }
 
   static async getById(id: string) {
@@ -33,6 +33,20 @@ class SalaryRequestModel {
       return doc;
     } catch (err) {
       return null;
+    }
+  }
+
+  static async getByUserId(userId: string, limit = 10) {
+    try {
+      const docs = await this.collection()
+        .find({ userId })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .toArray();
+      return docs;
+    } catch (err) {
+      console.error("Error getting salary requests by userId:", err);
+      return [];
     }
   }
 }

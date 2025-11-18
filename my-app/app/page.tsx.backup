@@ -1,0 +1,165 @@
+import { LandingPage } from "@/components/landing-page";
+
+export default function HomePage() {
+  return <LandingPage />;
+}
+
+  const handleFeatureClick = (feature: string) => {
+    if (!user) {
+      router.push("/login?redirect=" + feature);
+    }
+  };
+
+  const features = [
+    {
+      id: "contract",
+      title: "Analyze Contract",
+      description:
+        "Upload and analyze job contracts or offering letters for hidden red flags and good benefits",
+      icon: FileText,
+      href: "/dashboard/contract-analysis",
+      locked: !user,
+    },
+    {
+      id: "salary",
+      title: "Salary Benchmark",
+      description:
+        "Check salary ranges, get market insights, and negotiation recommendations",
+      icon: DollarSign,
+      href: "/dashboard/salary-benchmark",
+      locked: !user,
+    },
+    {
+      id: "jobdesk",
+      title: "Job Matching",
+      description:
+        "Analyze job descriptions and find skill gaps with AI-powered matching",
+      icon: Briefcase,
+      href: "/dashboard/job-matching",
+      locked: !user,
+    },
+  ];
+
+  return (
+    <>
+      <Navbar />
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/5">
+        {/* Hero Section */}
+        <section className="px-4 py-20 md:py-32 max-w-7xl mx-auto">
+          <div className="text-center space-y-6 mb-20">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground">
+              <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Your AI Career Advisor
+              </span>
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+              Make smarter career decisions with intelligent contract analysis,
+              salary benchmarking, and job matching
+            </p>
+            <div className="flex gap-4 justify-center flex-wrap">
+              {user ? (
+                <Button size="lg" onClick={() => router.push("/dashboard")}>
+                  Go to Dashboard <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : (
+                <>
+                  <Button asChild size="lg">
+                    <Link href="/login">Get Started</Link>
+                  </Button>
+                  <Button asChild size="lg" variant="outline">
+                    <Link href="/register">Sign Up Free</Link>
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Features Grid */}
+          <div className="grid md:grid-cols-3 gap-6 mb-20">
+            {features.map((feature) => {
+              const Icon = feature.icon;
+              return (
+                <Card
+                  key={feature.id}
+                  className="relative overflow-hidden transition-all hover:shadow-md hover:border-primary/50 cursor-pointer"
+                  onClick={() => handleFeatureClick(feature.id)}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="bg-secondary p-3 rounded-lg">
+                        <Icon className="h-6 w-6 text-primary" />
+                      </div>
+                      {feature.locked && (
+                        <Lock className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                    <CardTitle className="text-lg">{feature.title}</CardTitle>
+                    <CardDescription>{feature.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {feature.locked ? (
+                      <Button className="w-full" disabled>
+                        Sign in to use
+                      </Button>
+                    ) : (
+                      <Button
+                        asChild
+                        className="w-full bg-transparent"
+                        variant="outline"
+                      >
+                        <Link href={feature.href}>
+                          Use Now <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* How it Works */}
+          <section className="py-20 border-t border-border">
+            <h2 className="text-3xl font-bold text-center mb-12">
+              How It Works
+            </h2>
+            <div className="grid md:grid-cols-3 gap-8">
+              {[
+                {
+                  num: "1",
+                  title: "Upload or Paste",
+                  desc: "Share a contract, job description, or salary details",
+                },
+                {
+                  num: "2",
+                  title: "AI Analysis",
+                  desc: "Our AI analyzes the content for key insights",
+                },
+                {
+                  num: "3",
+                  title: "Get Insights",
+                  desc: "Receive actionable recommendations and warnings",
+                },
+              ].map((step) => (
+                <div key={step.num} className="text-center space-y-4">
+                  <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg mx-auto">
+                    {step.num}
+                  </div>
+                  <h3 className="font-semibold text-lg">{step.title}</h3>
+                  <p className="text-muted-foreground">{step.desc}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </section>
+
+        {/* Footer */}
+        <footer className="border-t border-border mt-20 py-8 px-4">
+          <div className="max-w-7xl mx-auto text-center text-sm text-muted-foreground">
+            <p>CareerSmart AI - Empowering smarter career decisions</p>
+          </div>
+        </footer>
+      </div>
+    </>
+  );
+}

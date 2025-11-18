@@ -55,6 +55,20 @@ class UserPreferencesModel {
     const preferences = await this.collection().findOne(query);
     return preferences;
   }
+
+  static async getByUserId(userId: string, limit = 10) {
+    try {
+      const docs = await this.collection()
+        .find({ userId: new ObjectId(userId) })
+        .sort({ _id: -1 })
+        .limit(limit)
+        .toArray();
+      return docs;
+    } catch (err) {
+      console.error("Error getting preferences by userId:", err);
+      return [];
+    }
+  }
 }
 
 export default UserPreferencesModel;

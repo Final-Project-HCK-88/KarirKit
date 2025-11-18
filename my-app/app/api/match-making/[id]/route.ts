@@ -1,9 +1,7 @@
 import UserPreferencesModel from "@/db/models/UserPreferencesModel";
 import errorHandler from "@/helpers/errHandler";
 import { matchJobsWithAIRealtime } from "@/helpers/geminiai";
-import { verifyToken } from "@/helpers/jwt";
 import { NextRequest, NextResponse } from "next/server";
-import { JWTPayload } from "@/types/jwt";
 
 export async function GET(
   request: NextRequest,
@@ -20,18 +18,14 @@ export async function GET(
       );
     }
 
-    const authHeader = request.headers.get("authorization");
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    // Get userId from middleware-injected header
+    const userId = request.headers.get("X-User-Id");
+    if (!userId) {
       return NextResponse.json(
-        { message: "Unauthorized. Authentication token required." },
+        { message: "Unauthorized. User ID not found." },
         { status: 401 }
       );
     }
-
-    const token = authHeader.substring(7);
-    const decoded = verifyToken(token) as JWTPayload;
-    const userId = decoded.userId;
 
     // Ambil preferences user dari database dan validasi bahwa preferences ini milik user yang login
     const preferences = await UserPreferencesModel.getPreferencesById(

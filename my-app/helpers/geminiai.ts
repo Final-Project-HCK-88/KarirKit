@@ -1,16 +1,64 @@
 import { GoogleGenAI } from "@google/genai";
 import { fetchJobsByPreferences, LinkedInJob } from "./linkedinJobs";
+import { generateOpenAIContent } from "./openai";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
-export async function generateGeminiContent(prompt: string) {
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: prompt,
+const USE_OPENAI = process.env.USE_OPENAI === "true";
+const USE_OPENAI_EMBEDDINGS = process.env.USE_OPENAI_EMBEDDINGS === "true";
+
+export async function generateGeminiContent(prompt: string, timeoutMs = 60000) {
+  // Use OpenAI if enabled
+  if (USE_OPENAI) {
+    console.log("🔄 Using OpenAI instead of Gemini");
+    return await generateOpenAIContent(prompt, "gpt-4o-mini", 2000);
+  }
+
+  // Otherwise use Gemini
+  // Create timeout promise
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(
+      () => reject(new Error("Gemini API timeout after " + timeoutMs + "ms")),
+      timeoutMs
+    );
   });
-  return response.text;
+
+  // Create API call promise
+  const apiPromise = ai.models
+    .generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+    })
+    .then((response) => {
+      // Log token usage
+      if (response.usageMetadata) {
+        console.log("📊 Token Usage:");
+        console.log(
+          "  - Prompt tokens:",
+          response.usageMetadata.promptTokenCount
+        );
+        console.log(
+          "  - Response tokens:",
+          response.usageMetadata.candidatesTokenCount
+        );
+        console.log(
+          "  - Total tokens:",
+          response.usageMetadata.totalTokenCount
+        );
+      }
+      return response.text;
+    });
+
+  // Race between timeout and API call
+  try {
+    const result = await Promise.race([apiPromise, timeoutPromise]);
+    return result as string;
+  } catch (error) {
+    console.error("Gemini API error:", error);
+    throw error;
+  }
 }
 
 /**
@@ -71,7 +119,7 @@ function enrichTextWithContext(
 }
 
 // Create embeddings using Google AI (Gemini) or OpenAI API
-// Gemini is preferred as primary, with OpenAI as fallback
+// Can be configured to use OpenAI as primary via USE_OPENAI_EMBEDDINGS env var
 export async function generateGeminiEmbedding(
   input: string | string[],
   options?: {
@@ -79,6 +127,27 @@ export async function generateGeminiEmbedding(
     metadata?: { title?: string; category?: string; tags?: string[] };
   }
 ) {
+  // If USE_OPENAI_EMBEDDINGS is true, use OpenAI directly without trying Gemini first
+  if (USE_OPENAI_EMBEDDINGS) {
+    console.log("Using OpenAI embeddings (primary)...");
+    const { generateOpenAIEmbedding } = await import("./openai");
+
+    // Handle single text
+    let text = Array.isArray(input) ? input.join(" ") : input;
+
+    // Apply preprocessing if enabled
+    if (options?.preprocess !== false) {
+      text = preprocessTextForEmbedding(text);
+    }
+
+    // Apply context enrichment if metadata provided
+    if (options?.metadata) {
+      text = enrichTextWithContext(text, options.metadata);
+    }
+
+    return await generateOpenAIEmbedding(text);
+  }
+
   const geminiApiKey = process.env.GEMINI_API_KEY;
   const openAiKey = process.env.OPENAI_API_KEY;
 
@@ -358,24 +427,45 @@ IMPORTANT: Return ONLY the JSON array without any markdown formatting, code bloc
 `;
 
   console.log("Sending jobs to Gemini AI for intelligent matching...");
-  const aiResponse = await generateGeminiContent(prompt);
 
-  if (!aiResponse) {
-    throw new Error("Failed to generate response from AI");
+  try {
+    const aiResponse = await generateGeminiContent(prompt, 45000); // 45 second timeout
+
+    if (!aiResponse) {
+      throw new Error("Failed to generate response from AI");
+    }
+
+    // Parse response dari AI
+    let cleanedResponse = aiResponse.trim();
+    if (cleanedResponse.startsWith("```json")) {
+      cleanedResponse = cleanedResponse
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "");
+    } else if (cleanedResponse.startsWith("```")) {
+      cleanedResponse = cleanedResponse.replace(/```\n?/g, "");
+    }
+
+    const matchedJobs = JSON.parse(cleanedResponse);
+    console.log(`AI matched and returned ${matchedJobs.length} best jobs`);
+
+    return matchedJobs;
+  } catch (aiError) {
+    console.error(
+      "AI matching failed, returning top 10 jobs without AI scoring:",
+      aiError
+    );
+
+    // Fallback: Return first 10 jobs with basic match score
+    return jobsData.slice(0, 10).map((job, index) => ({
+      ...job,
+      matchScore: 70 - index * 5, // Simple scoring: 70, 65, 60, 55...
+      matchReason: `This job matches your search for ${
+        preferences.position
+      } in ${preferences.location}. ${
+        job.salary
+          ? `Salary: ${job.salary}`
+          : "Please check the job posting for salary details."
+      }`,
+    }));
   }
-
-  // Parse response dari AI
-  let cleanedResponse = aiResponse.trim();
-  if (cleanedResponse.startsWith("```json")) {
-    cleanedResponse = cleanedResponse
-      .replace(/```json\n?/g, "")
-      .replace(/```\n?/g, "");
-  } else if (cleanedResponse.startsWith("```")) {
-    cleanedResponse = cleanedResponse.replace(/```\n?/g, "");
-  }
-
-  const matchedJobs = JSON.parse(cleanedResponse);
-  console.log(`AI matched and returned ${matchedJobs.length} best jobs`);
-
-  return matchedJobs;
 }
