@@ -43,14 +43,21 @@ interface MatchResponse {
   };
   jobListings: JobListing[];
   totalJobs: number;
+  currentPage: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
 }
 
 export default function JobMatchingResultPage() {
   const params = useParams();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<MatchResponse | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [allJobs, setAllJobs] = useState<JobListing[]>([]);
 
   useEffect(() => {
     const fetchJobMatches = async (retryCount = 0) => {
@@ -58,13 +65,16 @@ export default function JobMatchingResultPage() {
         setLoading(true);
         setError("");
 
-        const response = await fetch(`/api/match-making/${params.id}`, {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await fetch(
+          `/api/match-making/${params.id}?page=1&limit=5`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -90,6 +100,8 @@ export default function JobMatchingResultPage() {
         const responseData = await response.json();
         console.log("Job matching response:", responseData);
         setResult(responseData);
+        setAllJobs(responseData.jobListings);
+        setCurrentPage(1);
       } catch (err) {
         console.error("Error fetching job matches:", err);
         setError(
@@ -107,6 +119,40 @@ export default function JobMatchingResultPage() {
 
   const handleReset = () => {
     router.push("/dashboard/job-matching");
+  };
+
+  const loadMoreJobs = async () => {
+    if (!result?.hasNextPage || loadingMore) return;
+
+    try {
+      setLoadingMore(true);
+      const nextPage = currentPage + 1;
+
+      const response = await fetch(
+        `/api/match-making/${params.id}?page=${nextPage}&limit=5`,
+        {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to load more jobs");
+      }
+
+      const data = await response.json();
+      setAllJobs((prev) => [...prev, ...data.jobListings]);
+      setResult((prev) => (prev ? { ...prev, ...data } : data));
+      setCurrentPage(nextPage);
+    } catch (err) {
+      console.error("Error loading more jobs:", err);
+      setError("Failed to load more jobs");
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   if (loading) {
@@ -227,8 +273,13 @@ export default function JobMatchingResultPage() {
 
         {/* Job Listings */}
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold">Available Positions</h2>
-          {result.jobListings.map((job, index) => (
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold">Available Positions</h2>
+            <p className="text-sm text-muted-foreground">
+              Showing {allJobs.length} of {result.totalJobs} jobs
+            </p>
+          </div>
+          {allJobs.map((job, index) => (
             <Card
               key={job.id || index}
               className="hover:shadow-lg transition-shadow"
@@ -301,6 +352,30 @@ export default function JobMatchingResultPage() {
             </Card>
           ))}
         </div>
+
+        {/* Load More Button */}
+        {result.hasNextPage && (
+          <div className="flex justify-center pt-4">
+            <Button
+              onClick={loadMoreJobs}
+              disabled={loadingMore}
+              variant="outline"
+              size="lg"
+              className="gap-2"
+            >
+              {loadingMore ? (
+                <>
+                  <Loader className="h-4 w-4 animate-spin" />
+                  Loading more jobs...
+                </>
+              ) : (
+                `Load More Jobs (${
+                  result.totalJobs - allJobs.length
+                } remaining)`
+              )}
+            </Button>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-4 justify-center pt-8">

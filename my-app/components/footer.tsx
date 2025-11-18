@@ -25,9 +25,9 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Column 2 - Product */}
+          {/* Column 2 - Features */}
           <div>
-            <h3 className="font-bold text-base mb-3">Product</h3>
+            <h3 className="font-bold text-base mb-3">Features</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link

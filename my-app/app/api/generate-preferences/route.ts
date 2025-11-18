@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import CVModel from "@/db/models/CVModel";
+import CacheModel from "@/db/models/CacheModel";
 import { generateGeminiContent } from "@/helpers/geminiai";
 
 // POST /api/generate-preferences - Generate user preferences from CV
@@ -31,6 +32,28 @@ export async function POST(request: NextRequest) {
 
     console.log("📄 Generating preferences from CV...");
     console.log("📝 CV text length:", cv.text.length);
+
+    // Check cache first (using userId + cv updatedAt as key)
+    const cacheKey = {
+      userId: userId,
+      cvUpdatedAt: cv.updatedAt?.toISOString() || cv.createdAt?.toISOString(),
+    };
+
+    const cachedPreferences = await CacheModel.getCached(
+      "cv_preferences",
+      cacheKey
+    );
+
+    if (cachedPreferences) {
+      console.log("✅ Returning cached CV preferences");
+      return NextResponse.json({
+        success: true,
+        preferences: cachedPreferences,
+        cached: true,
+      });
+    }
+
+    console.log("🔄 Cache miss, generating new preferences with AI...");
 
     // Try Gemini AI with retry
     let preferences;
@@ -221,9 +244,13 @@ Important:
       console.log("✅ Fallback preferences generated:", preferences);
     }
 
+    // Save to cache (7 days TTL since CV doesn't change often)
+    await CacheModel.setCache("cv_preferences", cacheKey, preferences, 168); // 7 days = 168 hours
+
     return NextResponse.json({
       success: true,
       preferences,
+      cached: false,
     });
   } catch (error) {
     console.error("❌ Error generating preferences:", error);

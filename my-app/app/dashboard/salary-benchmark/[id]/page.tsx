@@ -27,6 +27,13 @@ interface BenchmarkResponse {
   sources?: string[];
 }
 
+interface UserPreferences {
+  jobTitle: string;
+  location: string;
+  experienceYear: number;
+  currentOrOfferedSallary: number;
+}
+
 export default function SalaryBenchmarkResultPage() {
   const params = useParams();
   const router = useRouter();
@@ -34,6 +41,8 @@ export default function SalaryBenchmarkResultPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<SalaryData | null>(null);
   const [jobTitle, setJobTitle] = useState("");
+  const [userPreferences, setUserPreferences] =
+    useState<UserPreferences | null>(null);
 
   useEffect(() => {
     const fetchBenchmark = async () => {
@@ -41,6 +50,7 @@ export default function SalaryBenchmarkResultPage() {
         setLoading(true);
         setError("");
 
+        // Fetch benchmark result
         const response = await fetch(`/api/sallary-benchmark/${params.id}`, {
           method: "GET",
           credentials: "include",
@@ -56,6 +66,31 @@ export default function SalaryBenchmarkResultPage() {
 
         const responseData = await response.json();
         const data: BenchmarkResponse = responseData.data;
+
+        // Fetch user preferences from salary_requests collection
+        const prefsResponse = await fetch(
+          `/api/sallary-benchmark?id=${params.id}`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+
+        let preferences: UserPreferences | null = null;
+        if (prefsResponse.ok) {
+          const prefsData = await prefsResponse.json();
+          if (prefsData.data) {
+            preferences = {
+              jobTitle: prefsData.data.jobTitle || "",
+              location: prefsData.data.location || "",
+              experienceYear: prefsData.data.experienceYear || 0,
+              currentOrOfferedSallary:
+                prefsData.data.currentOrOfferedSallary || 0,
+            };
+            setUserPreferences(preferences);
+            setJobTitle(preferences.jobTitle);
+          }
+        }
 
         // Determine status
         const userSalary = data.userSalary;
@@ -79,8 +114,10 @@ export default function SalaryBenchmarkResultPage() {
           salaryTrend: 0, // Not provided by API
         });
 
-        // Extract job title from analysis or use generic
-        setJobTitle("Your Position");
+        // If preferences not fetched, fallback to generic
+        if (!preferences) {
+          setJobTitle("Your Position");
+        }
       } catch (err) {
         console.error("Error fetching benchmark:", err);
         setError(
@@ -153,6 +190,46 @@ export default function SalaryBenchmarkResultPage() {
 
   return (
     <div className="px-4 py-8 max-w-4xl mx-auto">
+      {/* User Preferences Card */}
+      {userPreferences && (
+        <div className="mb-6 p-6 bg-blue-50 border border-blue-200 rounded-2xl">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">
+            📊 Your Preferences
+          </h2>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600 font-medium">Position:</span>
+              <p className="text-gray-900 font-semibold">
+                {userPreferences.jobTitle}
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-600 font-medium">Location:</span>
+              <p className="text-gray-900 font-semibold">
+                {userPreferences.location}
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-600 font-medium">Experience:</span>
+              <p className="text-gray-900 font-semibold">
+                {userPreferences.experienceYear} years
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-600 font-medium">
+                Current/Offered Salary:
+              </span>
+              <p className="text-gray-900 font-semibold">
+                Rp{" "}
+                {userPreferences.currentOrOfferedSallary.toLocaleString(
+                  "id-ID"
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <SalaryBenchmarkResult
         result={result}
         jobTitle={jobTitle}

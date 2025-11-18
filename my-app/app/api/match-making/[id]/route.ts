@@ -1,4 +1,5 @@
 import UserPreferencesModel from "@/db/models/UserPreferencesModel";
+import CacheModel from "@/db/models/CacheModel";
 import errorHandler from "@/helpers/errHandler";
 import { matchJobsWithAIRealtime } from "@/helpers/geminiai";
 import { NextRequest, NextResponse } from "next/server";
@@ -9,7 +10,11 @@ export async function GET(
 ) {
   try {
     const { id: preferencesId } = await params;
-    console.log({ preferencesId }, "<<< GET MATCH-MAKING DATA");
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "5");
+
+    console.log({ preferencesId, page, limit }, "<<< GET MATCH-MAKING DATA");
 
     if (!preferencesId) {
       return NextResponse.json(
@@ -42,19 +47,53 @@ export async function GET(
       );
     }
 
-    // Match jobs using REAL-TIME data from LinkedIn + Gemini AI
-    console.log(
-      "Fetching real-time jobs from LinkedIn and matching with AI..."
+    // Prepare cache key from preferences
+    const cachePreferences = {
+      location: preferences.location,
+      industry: preferences.industry,
+      expectedSalary: preferences.expectedSalary,
+      skill: preferences.skill,
+      position: preferences.position,
+    };
+
+    // Check cache first
+    const cachedResult = await CacheModel.getCached(
+      "job_matching",
+      cachePreferences
     );
+
+    if (cachedResult) {
+      console.log("✅ Returning cached job matching result");
+
+      // Apply pagination
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      const paginatedJobs = cachedResult.slice(startIndex, endIndex);
+      const totalPages = Math.ceil(cachedResult.length / limit);
+
+      return NextResponse.json(
+        {
+          message: "Job matching retrieved from cache",
+          source: "Cache (LinkedIn + Gemini AI)",
+          preferences,
+          jobListings: paginatedJobs,
+          totalJobs: cachedResult.length,
+          currentPage: page,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+          cached: true,
+        },
+        { status: 200 }
+      );
+    }
+
+    console.log("🔄 Cache miss, fetching real-time jobs from LinkedIn...");
+
+    // Match jobs using REAL-TIME data from LinkedIn + Gemini AI
     let jobListings;
     try {
-      jobListings = await matchJobsWithAIRealtime({
-        location: preferences.location,
-        industry: preferences.industry,
-        expectedSalary: preferences.expectedSalary,
-        skill: preferences.skill,
-        position: preferences.position,
-      });
+      jobListings = await matchJobsWithAIRealtime(cachePreferences);
     } catch (matchError) {
       console.error("Error matching jobs with AI:", matchError);
       return NextResponse.json(
@@ -67,13 +106,32 @@ export async function GET(
       );
     }
 
+    // Save ALL jobs to cache (12 hours TTL for job listings as they change more frequently)
+    await CacheModel.setCache(
+      "job_matching",
+      cachePreferences,
+      jobListings,
+      12
+    );
+
+    // Apply pagination to response
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedJobs = jobListings.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(jobListings.length / limit);
+
     return NextResponse.json(
       {
         message: "Real-time job matching completed successfully",
         source: "LinkedIn + Gemini AI",
         preferences,
-        jobListings,
+        jobListings: paginatedJobs,
         totalJobs: jobListings.length,
+        currentPage: page,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+        cached: false,
       },
       { status: 200 }
     );

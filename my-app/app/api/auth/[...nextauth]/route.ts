@@ -51,7 +51,7 @@ export const authOptions: NextAuthOptions = {
         // Generate JWT token dan simpan di cookies
         if (dbUser) {
           const jwtToken = signToken({
-            id: dbUser._id.toString(),
+            userId: dbUser._id.toString(),
             email: dbUser.email,
             fullname: dbUser.fullname,
           });
@@ -64,7 +64,10 @@ export const authOptions: NextAuthOptions = {
             maxAge: 60 * 60 * 24 * 7, // 7 hari
             path: "/",
           });
-          console.log("JWT token saved to cookies");
+          console.log(
+            "JWT token saved to cookies for user:",
+            dbUser._id.toString()
+          );
         }
 
         return true;

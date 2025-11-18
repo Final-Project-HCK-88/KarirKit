@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const history = await UserPreferencesModel.getByUserId(userId, 10);
+    const history = await UserPreferencesModel.getByUserId(userId, 5);
 
     // Convert ObjectId to string for each history item
     const formattedHistory = history.map((item: any) => ({

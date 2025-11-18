@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import SalaryRequestModel from "@/db/models/SalaryRequestModel";
 import KBVectorModel from "@/db/models/KBVectorModel";
+import CacheModel from "@/db/models/CacheModel";
 import errorHandler from "@/helpers/errHandler";
 import {
   generateGeminiEmbedding,
@@ -32,6 +33,34 @@ export async function GET(
         { message: "Request not found" },
         { status: 404 }
       );
+
+    // Prepare cache key from preferences
+    const cachePreferences = {
+      jobTitle: requestDoc.jobTitle,
+      location: requestDoc.location,
+      experienceYear: requestDoc.experienceYear,
+      currentOrOfferedSallary: requestDoc.currentOrOfferedSallary,
+    };
+
+    // Check cache first
+    const cachedResult = await CacheModel.getCached(
+      "salary_benchmark",
+      cachePreferences
+    );
+
+    if (cachedResult) {
+      console.log("✅ Returning cached salary benchmark result");
+      return NextResponse.json(
+        {
+          message: "Benchmark retrieved from cache",
+          data: cachedResult,
+          cached: true,
+        },
+        { status: 200 }
+      );
+    }
+
+    console.log("🔄 Cache miss, generating new salary benchmark...");
 
     // Build query text for embedding search
     const queryText = `JobTitle: ${requestDoc.jobTitle}; Location: ${requestDoc.location}; Experience: ${requestDoc.experienceYear} years; CurrentOrOfferedSalary: ${requestDoc.currentOrOfferedSallary}`;
@@ -180,10 +209,19 @@ Return ONLY the JSON object, nothing else. Numbers should be integers (IDR per m
       throw new Error("AI returned invalid JSON format");
     }
 
+    // Save to cache (24 hours TTL)
+    await CacheModel.setCache(
+      "salary_benchmark",
+      cachePreferences,
+      parsedResult,
+      24
+    );
+
     return NextResponse.json(
       {
         message: "Benchmark generated successfully",
         data: parsedResult,
+        cached: false,
       },
       { status: 200 }
     );

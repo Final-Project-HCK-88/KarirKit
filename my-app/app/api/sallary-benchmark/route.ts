@@ -13,7 +13,43 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const history = await SalaryRequestModel.getByUserId(userId, 10);
+    // Check if requesting specific salary request by ID
+    const { searchParams } = new URL(request.url);
+    const requestId = searchParams.get("id");
+
+    if (requestId) {
+      // Get single salary request
+      const salaryRequest = await SalaryRequestModel.getById(requestId);
+
+      if (!salaryRequest) {
+        return NextResponse.json(
+          { message: "Salary request not found" },
+          { status: 404 }
+        );
+      }
+
+      // Verify ownership
+      if (salaryRequest.userId !== userId) {
+        return NextResponse.json(
+          { message: "Forbidden. This request does not belong to you." },
+          { status: 403 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          message: "Salary request retrieved",
+          data: {
+            ...salaryRequest,
+            _id: salaryRequest._id.toString(),
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    // Get history (list of all salary requests)
+    const history = await SalaryRequestModel.getByUserId(userId, 5);
 
     // Convert ObjectId to string for each history item
     const formattedHistory = history.map((item: any) => ({

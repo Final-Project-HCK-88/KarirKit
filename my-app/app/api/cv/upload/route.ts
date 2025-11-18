@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import CVModel from "@/db/models/CVModel";
 import UserModel from "@/db/models/UserModel";
+import CacheModel from "@/db/models/CacheModel";
 import cloudinary from "@/db/config/cloudinary";
 
 // POST /api/cv/upload - Upload CV (PDF) for job matching & salary benchmark
@@ -144,6 +145,10 @@ export async function POST(request: NextRequest) {
     if (!cv) {
       return NextResponse.json({ error: "Failed to save CV" }, { status: 500 });
     }
+
+    // Clear all cache for this user when new CV is uploaded
+    console.log("🗑️ Clearing cache for user due to new CV upload...");
+    await CacheModel.clearUserCache(userId);
 
     return NextResponse.json({
       success: true,

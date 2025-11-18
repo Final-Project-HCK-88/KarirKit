@@ -7,7 +7,7 @@ const openai = new OpenAI({
 export async function generateOpenAIContent(
   prompt: string,
   model: string = "gpt-4o-mini",
-  maxTokens: number = 2000
+  maxTokens: number = 4000
 ): Promise<string> {
   try {
     console.log(`🤖 Calling OpenAI ${model}...`);

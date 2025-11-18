@@ -341,7 +341,7 @@ export async function generateGeminiEmbedding(
 
 /**
  * Match jobs with AI using REAL-TIME data from LinkedIn API
- * Flow: User preferences → Fetch from LinkedIn → AI filtering → Top 5 matches
+ * Flow: User preferences → Fetch from LinkedIn → AI filtering → All matches with scores
  */
 export async function matchJobsWithAIRealtime(preferences: {
   location: string;
@@ -377,8 +377,11 @@ export async function matchJobsWithAIRealtime(preferences: {
 
   console.log(`Found ${linkedInJobs.length} jobs from LinkedIn`);
 
-  // Format jobs data for AI
-  const jobsData = linkedInJobs.map((job: LinkedInJob, index: number) => ({
+  // Format jobs data for AI (limit to 15 to avoid token overflow)
+  const jobsToAnalyze = linkedInJobs.slice(0, 15);
+  console.log(`Analyzing ${jobsToAnalyze.length} jobs with AI...`);
+
+  const jobsData = jobsToAnalyze.map((job: LinkedInJob, index: number) => ({
     id: job.jobId || `linkedin-${index}`,
     position: job.position,
     company: job.company,
@@ -391,7 +394,7 @@ export async function matchJobsWithAIRealtime(preferences: {
 
   // Create AI prompt for intelligent filtering
   const prompt = `
-You are an expert job matching AI assistant. Based on the user preferences below, analyze the available jobs from LinkedIn and select the TOP 5 BEST MATCHES.
+You are an expert job matching AI assistant. Based on the user preferences below, analyze ALL the available jobs from LinkedIn and score each one.
 
 User Preferences:
 - Location: ${preferences.location}
@@ -413,23 +416,23 @@ Instructions:
    - Skills match (infer required skills from job title and description)
    - Company reputation and size
    - Date posted (prefer recent postings)
-3. Select the TOP 5 jobs that best match the user preferences
+3. Score ALL jobs based on match quality
 4. Rank them by match quality (best match first)
-5. For each selected job, add:
+5. For each job, add:
    - "matchScore" (0-100): Overall match quality score
-   - "matchReason": Brief explanation (2-3 sentences) why it's a good fit
+   - "matchReason": Brief explanation (2-3 sentences) why it's a good fit or not
 
-Return ONLY a valid JSON array with exactly 5 best matching jobs. Each job should include all original fields plus:
+Return ONLY a valid JSON array with ALL jobs scored and ranked. Each job should include all original fields plus:
 - matchScore: number between 0-100
 - matchReason: string explaining the match
 
-IMPORTANT: Return ONLY the JSON array without any markdown formatting, code blocks, or additional text.
+IMPORTANT: Return ONLY the JSON array without any markdown formatting, code blocks, or additional text. Include ALL jobs from the list.
 `;
 
-  console.log("Sending jobs to Gemini AI for intelligent matching...");
+  console.log("Sending jobs to AI for intelligent matching...");
 
   try {
-    const aiResponse = await generateGeminiContent(prompt, 45000); // 45 second timeout
+    const aiResponse = await generateGeminiContent(prompt, 60000); // 60 second timeout for thorough analysis
 
     if (!aiResponse) {
       throw new Error("Failed to generate response from AI");
@@ -446,7 +449,12 @@ IMPORTANT: Return ONLY the JSON array without any markdown formatting, code bloc
     }
 
     const matchedJobs = JSON.parse(cleanedResponse);
-    console.log(`AI matched and returned ${matchedJobs.length} best jobs`);
+    console.log(`AI matched and scored ${matchedJobs.length} jobs`);
+
+    // Sort by match score descending
+    matchedJobs.sort(
+      (a: any, b: any) => (b.matchScore || 0) - (a.matchScore || 0)
+    );
 
     return matchedJobs;
   } catch (aiError) {
