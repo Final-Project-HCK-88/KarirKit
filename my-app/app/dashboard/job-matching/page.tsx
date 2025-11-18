@@ -29,6 +29,19 @@ interface HistoryItem {
   position: string;
 }
 
+interface PreferenceOption {
+  id: string;
+  title: string;
+  description: string;
+  position: string;
+  skills: string;
+  experienceLevel: string;
+  yearsOfExperience: number;
+  location: string;
+  industry: string;
+  expectedSalary: number;
+}
+
 export default function JobMatchingPage() {
   const [step, setStep] = useState<"input" | "analyzing">("input");
   const [formData, setFormData] = useState({
@@ -40,11 +53,14 @@ export default function JobMatchingPage() {
   });
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
-  const [useCV, setUseCV] = useState(false);
   const [hasCV, setHasCV] = useState(false);
-  const [loadingCV, setLoadingCV] = useState(false);
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [isUploadingCV, setIsUploadingCV] = useState(false);
+  const [preferenceOptions, setPreferenceOptions] = useState<
+    PreferenceOption[]
+  >([]);
+  const [loadingOptions, setLoadingOptions] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -68,65 +84,67 @@ export default function JobMatchingPage() {
     fetchHistory();
   }, []);
 
-  // Check if user has CV
+  // Check if user has CV and load preferences
   useEffect(() => {
-    const checkCV = async () => {
+    const checkCVAndLoadOptions = async () => {
       try {
         const response = await fetch("/api/cv");
         const data = await response.json();
         setHasCV(data.hasCV || false);
+
+        // If user has CV, automatically load preference options
+        if (data.hasCV) {
+          await loadPreferenceOptions();
+        }
       } catch (error) {
         console.error("Error checking CV:", error);
       }
     };
-    checkCV();
+    checkCVAndLoadOptions();
   }, []);
 
-  const handleToggleCV = async () => {
-    if (!hasCV) return;
-
-    const newUseCV = !useCV;
-    setUseCV(newUseCV);
-
-    if (newUseCV) {
-      setLoadingCV(true);
-      try {
-        const response = await fetch("/api/generate-preferences", {
-          method: "POST",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to generate preferences");
-        }
-
-        const data = await response.json();
-        console.log("Generated preferences:", data.preferences);
-
-        // Auto-fill form
-        setFormData({
-          position: data.preferences.position || "",
-          location: data.preferences.location || "",
-          industry: data.preferences.industry || "",
-          expectedSalary: data.preferences.expectedSalary?.toString() || "",
-          skill: data.preferences.skills || "",
-        });
-      } catch (error) {
-        console.error("Error generating preferences:", error);
-        alert("Failed to load CV data");
-        setUseCV(false);
-      } finally {
-        setLoadingCV(false);
-      }
-    } else {
-      // Clear form when toggling off
-      setFormData({
-        location: "",
-        industry: "",
-        expectedSalary: "",
-        skill: "",
-        position: "",
+  const loadPreferenceOptions = async () => {
+    setLoadingOptions(true);
+    try {
+      const response = await fetch("/api/generate-preferences", {
+        method: "POST",
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate preferences");
+      }
+
+      const data = await response.json();
+      console.log("Generated preferences:", data.preferences);
+
+      // Set the options from API response
+      if (data.preferences?.options) {
+        setPreferenceOptions(data.preferences.options);
+      }
+    } catch (error) {
+      console.error("Error generating preferences:", error);
+    } finally {
+      setLoadingOptions(false);
     }
+  };
+
+  const handleSelectOption = (option: PreferenceOption) => {
+    setSelectedOption(option.id);
+    // Auto-fill form with selected option
+    setFormData({
+      position: option.position || "",
+      location: option.location || "",
+      industry: option.industry || "",
+      expectedSalary: option.expectedSalary?.toString() || "",
+      skill: option.skills || "",
+    });
+
+    // Scroll to form
+    setTimeout(() => {
+      document
+        .getElementById("job-matching-form")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
   };
 
   const handleCVFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,39 +168,30 @@ export default function JobMatchingPage() {
     setIsUploadingCV(true);
 
     try {
-      // Upload PDF
+      // Upload CV using dedicated CV upload endpoint
       const formDataUpload = new FormData();
       formDataUpload.append("file", cvFile);
 
-      const uploadResponse = await fetch("/api/upload-pdf", {
+      const uploadResponse = await fetch("/api/cv/upload", {
         method: "POST",
         body: formDataUpload,
       });
 
       if (!uploadResponse.ok) {
-        throw new Error("Failed to upload PDF");
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.error || "Failed to upload CV");
       }
 
       const uploadData = await uploadResponse.json();
-
-      // Save CV to database
-      const saveResponse = await fetch("/api/cv", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          link: uploadData.url,
-          text: uploadData.extractedText,
-        }),
-      });
-
-      if (!saveResponse.ok) {
-        throw new Error("Failed to save CV");
-      }
+      console.log("✅ CV uploaded:", uploadData);
 
       // Update state
       setHasCV(true);
       setCvFile(null);
-      alert("CV uploaded successfully! You can now use CV data.");
+      alert("CV uploaded successfully! Loading career insights...");
+
+      // Load preference options after successful upload
+      await loadPreferenceOptions();
 
       // Reset file input
       const fileInput = document.getElementById(
@@ -326,48 +335,127 @@ export default function JobMatchingPage() {
             </Card>
           ) : null}
 
-          <Card>
+          {/* Career Preference Options */}
+          {loadingOptions && (
+            <Card>
+              <CardContent className="py-12">
+                <div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
+                  <Loader className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-lg font-medium">Analyzing your CV...</p>
+                  <p className="text-sm">Generating career insights for you</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {!loadingOptions && preferenceOptions.length > 0 && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">
+                  Career Paths Based on Your Profile
+                </h2>
+                <p className="text-muted-foreground">
+                  Here are career opportunities that match your skills and
+                  experience. Select one to start your job search.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                {preferenceOptions.map((option) => (
+                  <Card
+                    key={option.id}
+                    className={`cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] ${
+                      selectedOption === option.id
+                        ? "ring-2 ring-primary shadow-lg bg-primary/5"
+                        : "hover:border-primary"
+                    }`}
+                    onClick={() => handleSelectOption(option)}
+                  >
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-xl mb-2 flex items-center gap-2">
+                            {option.title}
+                            {selectedOption === option.id && (
+                              <span className="text-xs bg-primary text-white px-2 py-1 rounded-full">
+                                Selected
+                              </span>
+                            )}
+                          </CardTitle>
+                          <CardDescription className="text-base">
+                            {option.description}
+                          </CardDescription>
+                        </div>
+                        <ChevronRight
+                          className={`h-5 w-5 transition-transform ${
+                            selectedOption === option.id ? "rotate-90" : ""
+                          }`}
+                        />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">
+                            Position:
+                          </span>
+                          <p className="font-medium">{option.position}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">
+                            Industry:
+                          </span>
+                          <p className="font-medium">{option.industry}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">
+                            Location:
+                          </span>
+                          <p className="font-medium">{option.location}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">
+                            Expected Salary:
+                          </span>
+                          <p className="font-medium">
+                            Rp {option.expectedSalary}jt
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <span className="text-muted-foreground text-sm">
+                          Key Skills:
+                        </span>
+                        <p className="text-sm mt-1">{option.skills}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Card id="job-matching-form">
             <CardHeader>
               <CardTitle>Job Preferences</CardTitle>
               <CardDescription>
-                Tell us what you're looking for and we'll find matching jobs
+                {preferenceOptions.length > 0
+                  ? "Review and adjust your job preferences below"
+                  : "Tell us what you're looking for and we'll find matching jobs"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* CV Toggle */}
-              <div className="flex items-center justify-between p-4 bg-accent/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <div>
-                    <p className="font-medium text-sm">
-                      {hasCV ? "Use CV Data" : "No CV Uploaded"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {hasCV
-                        ? "Auto-fill form with your CV information"
-                        : "Upload your CV to auto-fill this form"}
-                    </p>
+              {/* CV Upload Section */}
+              {!hasCV && (
+                <div className="flex items-center justify-between p-4 bg-accent/50 rounded-lg border-2 border-dashed">
+                  <div className="flex items-center gap-3">
+                    <Upload className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="font-medium text-sm">Upload Your CV</p>
+                      <p className="text-xs text-muted-foreground">
+                        Get personalized job recommendations and auto-fill forms
+                      </p>
+                    </div>
                   </div>
-                </div>
-                {hasCV ? (
-                  <Button
-                    variant={useCV ? "default" : "outline"}
-                    size="sm"
-                    onClick={handleToggleCV}
-                    disabled={loadingCV}
-                  >
-                    {loadingCV ? (
-                      <>
-                        <Loader className="h-4 w-4 mr-2 animate-spin" />
-                        Loading...
-                      </>
-                    ) : useCV ? (
-                      "Enabled"
-                    ) : (
-                      "Enable"
-                    )}
-                  </Button>
-                ) : (
                   <div className="flex gap-2 items-center">
                     <Input
                       id="cv-upload-job"
@@ -379,7 +467,7 @@ export default function JobMatchingPage() {
                     <Button
                       size="sm"
                       onClick={handleUploadCV}
-                      disabled={!cvFile || isUploadingCV}
+                      disabled={isUploadingCV || !cvFile}
                     >
                       {isUploadingCV ? (
                         <>
@@ -394,8 +482,8 @@ export default function JobMatchingPage() {
                       )}
                     </Button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">

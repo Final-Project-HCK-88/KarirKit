@@ -69,6 +69,7 @@ export default function ContractAnalysisPage() {
   const [analysis, setAnalysis] = useState<CVAnalysis | null>(null);
   const [summary, setSummary] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [showFullSummary, setShowFullSummary] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -115,11 +116,21 @@ export default function ContractAnalysisPage() {
         throw new Error(data.message || "Upload failed");
       }
 
-      setUploadResult(data.data);
+      console.log("✅ Upload response:", data);
+      console.log("📋 resumeId from response:", data.resumeId);
+      console.log("📋 Full data keys:", Object.keys(data));
+
+      // Response structure is flat, not nested in data.data
+      setUploadResult(data);
       setStep("uploaded");
 
       // Auto analyze after upload
-      setTimeout(() => handleAnalyze(data.data.resumeId), 500);
+      if (data.resumeId) {
+        console.log("🚀 Starting auto-analyze with resumeId:", data.resumeId);
+        setTimeout(() => handleAnalyze(data.resumeId), 500);
+      } else {
+        console.error("❌ No resumeId in upload response!");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
       setStep("upload");
@@ -128,12 +139,24 @@ export default function ContractAnalysisPage() {
 
   const handleAnalyze = async (resumeId?: string) => {
     const targetId = resumeId || uploadResult?.resumeId;
-    if (!targetId) return;
+
+    console.log("🔍 handleAnalyze called with:", {
+      passedResumeId: resumeId,
+      uploadResultResumeId: uploadResult?.resumeId,
+      targetId,
+    });
+
+    if (!targetId) {
+      console.error("❌ No targetId available!");
+      return;
+    }
 
     setStep("analyzing");
     setError("");
 
     try {
+      console.log("📤 Sending analyze requests with resumeId:", targetId);
+
       // Call both analyze and summarize in parallel
       const [analyzeRes, summarizeRes] = await Promise.all([
         fetch("/api/analyze-cv", {
@@ -151,7 +174,11 @@ export default function ContractAnalysisPage() {
       const analyzeData = await analyzeRes.json();
       const summarizeData = await summarizeRes.json();
 
+      console.log("📊 Analyze response:", analyzeData);
+      console.log("📊 Summarize response:", summarizeData);
+
       if (!analyzeRes.ok) {
+        console.error("❌ Analyze failed:", analyzeData);
         throw new Error(analyzeData.message || "Analysis failed");
       }
 
@@ -159,6 +186,7 @@ export default function ContractAnalysisPage() {
       setSummary(summarizeData.data?.summary || "");
       setStep("result");
     } catch (err) {
+      console.error("❌ Analysis error:", err);
       setError(err instanceof Error ? err.message : "Analysis failed");
       setStep("uploaded");
     }
@@ -171,6 +199,7 @@ export default function ContractAnalysisPage() {
     setAnalysis(null);
     setSummary("");
     setError("");
+    setShowFullSummary(false);
   };
 
   return (
@@ -449,10 +478,34 @@ export default function ContractAnalysisPage() {
               <CardHeader>
                 <CardTitle>Document Summary</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground whitespace-pre-line">
-                  {summary}
-                </p>
+              <CardContent className="space-y-4">
+                <div className="text-muted-foreground whitespace-pre-line">
+                  {showFullSummary ? (
+                    summary
+                  ) : summary.length > 800 ? (
+                    <>{summary.substring(0, 800)}...</>
+                  ) : (
+                    summary
+                  )}
+                </div>
+
+                {summary.length > 800 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowFullSummary(!showFullSummary)}
+                    className="w-full"
+                  >
+                    {showFullSummary ? (
+                      <>Show Less</>
+                    ) : (
+                      <>
+                        Show Full Document ({Math.round(summary.length / 1000)}k
+                        characters)
+                      </>
+                    )}
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}

@@ -6,10 +6,13 @@ export async function POST(request: NextRequest) {
   try {
     console.log("\n🔍 === ANALYZE CV API STARTED ===");
     const body = await request.json();
+    console.log("📦 Full request body:", JSON.stringify(body));
     const { resumeId } = body;
     console.log("📋 Resume ID received:", resumeId);
+    console.log("📋 Resume ID type:", typeof resumeId);
 
     if (!resumeId) {
+      console.error("❌ Resume ID is missing or undefined!");
       return NextResponse.json(
         { message: "Resume ID is required" },
         { status: 400 }
@@ -29,9 +32,27 @@ export async function POST(request: NextRequest) {
 
     const pdfText = resume.extractedText;
 
+    console.log("📝 Extracted text raw length:", pdfText?.length || 0);
+    console.log(
+      "📝 Extracted text trimmed length:",
+      pdfText?.trim().length || 0
+    );
+    console.log("📝 Text preview:", pdfText?.substring(0, 100));
+
     if (!pdfText || pdfText.trim().length === 0) {
+      console.error(
+        "❌ No valid text extracted from PDF. N8N extraction may have failed."
+      );
       return NextResponse.json(
-        { message: "No text found in resume. Please upload PDF first." },
+        {
+          message:
+            "No text could be extracted from the PDF. The document might be scanned image or n8n extraction failed. Please try a different PDF or check if the file contains selectable text.",
+          error: "EMPTY_TEXT",
+          debug: {
+            rawLength: pdfText?.length || 0,
+            trimmedLength: pdfText?.trim().length || 0,
+          },
+        },
         { status: 400 }
       );
     }

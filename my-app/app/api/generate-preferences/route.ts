@@ -41,27 +41,38 @@ export async function POST(request: NextRequest) {
         console.log(`🤖 Attempt ${attempt}: Calling Gemini AI...`);
 
         const prompt = `
-Analyze the following CV/Resume and extract the following information in JSON format:
+Analyze the following CV/Resume and generate 3-4 different career preference options based on the candidate's skills, experience, and potential career paths.
+
+Return a JSON array with 3-4 career options:
 
 {
-  "position": "Job title/position the person is looking for or has experience in",
-  "skills": "Comma-separated list of key technical skills",
-  "experienceLevel": "junior/mid/senior based on years of experience",
-  "yearsOfExperience": "Number of years of work experience in related skills",
-  "location": "Preferred work location or current location",
-  "industry": "Industry domain (e.g., Technology, Finance, Healthcare)",
-  "expectedSalary": "Expected salary range if mentioned, or return 0 if not specified"
+  "options": [
+    {
+      "id": "1",
+      "title": "Brief, catchy title for this career path (e.g., 'Senior Developer Role', 'Tech Lead Position')",
+      "description": "2-3 sentence description explaining why this is a good fit based on their CV",
+      "position": "Specific job title",
+      "skills": "Comma-separated list of relevant technical skills",
+      "experienceLevel": "junior/mid/senior",
+      "yearsOfExperience": "Number of years",
+      "location": "Preferred work location",
+      "industry": "Industry domain",
+      "expectedSalary": "Salary in millions IDR (number only)"
+    }
+  ]
 }
 
 CV/Resume Text:
 ${cv.text}
 
 Important:
-- Return ONLY valid JSON, no markdown formatting
-- If information is not found, use reasonable estimates based on the CV content
-- For expectedSalary, provide a number in millions (e.g., 15 for 15 million IDR)
-- For skills, extract top 5-7 most relevant skills
-- Be concise and accurate
+- Generate 3-4 DIFFERENT career options (e.g.,specialized role, different industry)
+- Each option should be realistic based on their actual experience and skills
+- Return ONLY valid JSON object with "options" array, no markdown formatting
+- For expectedSalary, return 0 for user to input later with informative placeholder
+- Make titles realistic based on their cv and specific (max 50 chars)
+- Descriptions should highlight why this path matches their CV (max 150 chars)
+- Skills should be comma-separated string
 `;
 
         const geminiResponse = await generateGeminiContent(prompt, 30000); // 30s timeout
@@ -161,14 +172,50 @@ Important:
       const salaryEstimate =
         yearsOfExperience < 2 ? 8 : yearsOfExperience < 5 ? 15 : 25;
 
+      // Generate 3 fallback options with variations
       preferences = {
-        position,
-        skills,
-        experienceLevel,
-        yearsOfExperience,
-        location,
-        industry: "Technology",
-        expectedSalary: salaryEstimate,
+        options: [
+          {
+            id: "1",
+            title: `${position} - Current Level`,
+            description: `Continue growing in your current role with ${yearsOfExperience} years of experience in ${
+              skills.split(",")[0]?.trim() || "your field"
+            }.`,
+            position,
+            skills,
+            experienceLevel,
+            yearsOfExperience,
+            location,
+            industry: "Technology",
+            expectedSalary: salaryEstimate,
+          },
+          {
+            id: "2",
+            title: `Senior ${position}`,
+            description: `Step up to a senior position leveraging your expertise in ${
+              skills.split(",").slice(0, 2).join(" and ") || "technology"
+            }.`,
+            position: `Senior ${position}`,
+            skills,
+            experienceLevel: experienceLevel === "junior" ? "mid" : "senior",
+            yearsOfExperience: yearsOfExperience + 2,
+            location,
+            industry: "Technology",
+            expectedSalary: salaryEstimate + 7,
+          },
+          {
+            id: "3",
+            title: `${position} - Tech Lead`,
+            description: `Transition into technical leadership, combining hands-on work with team guidance and mentoring.`,
+            position: `${position} (Tech Lead)`,
+            skills: `${skills}, Leadership, Team Management`,
+            experienceLevel: "senior",
+            yearsOfExperience: yearsOfExperience + 1,
+            location,
+            industry: "Technology",
+            expectedSalary: salaryEstimate + 10,
+          },
+        ],
       };
 
       console.log("✅ Fallback preferences generated:", preferences);

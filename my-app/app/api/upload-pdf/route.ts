@@ -94,9 +94,13 @@ export async function POST(request: NextRequest) {
           );
           console.log("📝 Text preview:", extractedText.substring(0, 200));
 
-          if (extractedText.length === 0 || extractedText === "{}") {
-            console.warn("⚠️ All fields empty, response:", n8nData);
-            extractedText = "[N8N returned empty text]";
+          // Check if extraction actually worked
+          const trimmedText = extractedText.trim();
+          if (trimmedText.length === 0 || extractedText === "{}") {
+            console.warn("⚠️ N8N returned empty or whitespace-only text");
+            console.warn("⚠️ This PDF might be a scanned image requiring OCR");
+            extractedText =
+              "[PDF_EXTRACTION_FAILED: This PDF appears to be a scanned image. Please upload a text-based PDF or contact support for OCR capabilities.]";
           }
         } else {
           const errorText = await n8nResponse.text();
