@@ -520,7 +520,9 @@ export default function JobMatchingPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Expected Salary</label>
+                  <label className="text-sm font-medium">
+                    Expected Salary{" "}
+                  </label>
                   <Input
                     type="number"
                     placeholder="e.g., 15000000"

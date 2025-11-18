@@ -88,7 +88,7 @@ export default function LoginPage() {
         className="absolute top-8 left-8 flex items-center space-x-3 z-10"
       >
         <Image
-          src="/logo.png"
+          src="/kaka2.png"
           alt="KarirKit Logo"
           width={40}
           height={40}
@@ -96,7 +96,7 @@ export default function LoginPage() {
           priority
           unoptimized
         />
-        <span className="text-2xl font-bold text-gray-900">KarirKit</span>
+        <span className="text-2xl font-bold text-[#0c1b8a]">KarirKit</span>
       </Link>
 
       <Card className="w-full max-w-md border-0 shadow-2xl rounded-3xl relative z-10">

@@ -531,7 +531,10 @@ export default function SalaryBenchmarkPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
-                    Current/Offered Salary (Optional)
+                    Current/Offered Salary{" "}
+                    <span className="text-xs text-gray-500 font-normal">
+                      (dapat disesuaikan)
+                    </span>
                   </label>
                   <Input
                     type="number"

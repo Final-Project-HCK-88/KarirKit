@@ -69,7 +69,7 @@ Important:
 - Generate 3-4 DIFFERENT career options (e.g.,specialized role, different industry)
 - Each option should be realistic based on their actual experience and skills
 - Return ONLY valid JSON object with "options" array, no markdown formatting
-- For expectedSalary, return 0 for user to input later with informative placeholder
+- For expectedSalary, analyze the CV and provide realistic salary estimation in millions IDR based on their experience level, skills, and position (e.g., junior: 6-10, mid: 12-20, senior: 20-35)
 - Make titles realistic based on their cv and specific (max 50 chars)
 - Descriptions should highlight why this path matches their CV (max 150 chars)
 - Skills should be comma-separated string

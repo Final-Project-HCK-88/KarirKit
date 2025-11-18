@@ -9,13 +9,19 @@ export async function GET(request: NextRequest) {
   try {
     console.log("\n🔍 === GET ANALYSIS API STARTED ===");
 
-    // Get logged in user
-    const user = (await getServerUser()) as JWTPayload | null;
-    if (!user || !user.userId) {
-      return NextResponse.json(
-        { message: "Unauthorized. Please login first." },
-        { status: 401 }
-      );
+    // Get user from middleware-injected headers or fallback to getServerUser
+    let userId = request.headers.get("X-User-Id");
+
+    if (!userId) {
+      // Fallback to getServerUser for backwards compatibility
+      const user = (await getServerUser()) as JWTPayload | null;
+      if (!user || !user.userId) {
+        return NextResponse.json(
+          { message: "Unauthorized. Please login first." },
+          { status: 401 }
+        );
+      }
+      userId = user.userId;
     }
 
     const { searchParams } = new URL(request.url);
@@ -29,11 +35,12 @@ export async function GET(request: NextRequest) {
     }
 
     console.log("📋 Fetching analysis for resumeId:", resumeId);
+    console.log("👤 User ID:", userId);
 
     // Check if analysis exists
     const existingAnalysis = await AnalysisModel.findByResumeIdAndUserId(
       resumeId,
-      user.userId
+      userId
     );
 
     if (!existingAnalysis || existingAnalysis.length === 0) {
