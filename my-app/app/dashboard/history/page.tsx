@@ -1,55 +1,112 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  ArrowLeft,
-  FileText,
-  DollarSign,
-  Briefcase,
-  Trash2,
-  Eye,
-} from "lucide-react";
+import { ArrowLeft, FileText, Trash2, Eye, CheckCircle } from "lucide-react";
 
 interface HistoryItem {
   id: string;
-  type: "contract" | "salary" | "job";
-  title: string;
-  description: string;
-  date: string;
-  icon: any;
-  color: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  textLength: number;
+  uploadedAt: string;
+  hasAnalysis?: boolean;
+  analysisId?: string;
 }
 
 export default function HistoryPage() {
+  const router = useRouter();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    // Fetch history from API when available
-    // For now, just set loading to false
-    setIsLoading(false);
+    fetchHistory();
   }, []);
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case "contract":
-        return { icon: FileText, color: "text-blue-600" };
-      case "salary":
-        return { icon: DollarSign, color: "text-green-600" };
-      case "job":
-        return { icon: Briefcase, color: "text-purple-600" };
-      default:
-        return { icon: FileText, color: "text-gray-600" };
+  const fetchHistory = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/history");
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch history");
+      }
+
+      const data = await response.json();
+      const resumes = data.data.resumes || [];
+
+      // Check analysis status for each resume
+      const resumesWithAnalysis = await Promise.all(
+        resumes.map(async (resume: HistoryItem) => {
+          try {
+            const analysisResponse = await fetch(
+              `/api/analyze-cv?resumeId=${resume.id}`
+            );
+            const analysisData = await analysisResponse.json();
+            return {
+              ...resume,
+              hasAnalysis: analysisData.hasAnalysis || false,
+              analysisId: analysisData.data?.analysisId,
+            };
+          } catch {
+            return { ...resume, hasAnalysis: false };
+          }
+        })
+      );
+
+      setHistory(resumesWithAnalysis);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load history");
+      console.error("Error fetching history:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    // Implement delete functionality when API is available
-    console.log("Delete item:", id);
+  const handleDelete = async (id: string, fileName: string) => {
+    if (
+      !confirm(
+        `Are you sure you want to delete "${fileName}"?\n\nThis will also delete any associated analysis results.`
+      )
+    )
+      return;
+
+    try {
+      const response = await fetch(`/api/analyze-cv?resumeId=${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete file");
+      }
+
+      // Refresh history after successful deletion
+      await fetchHistory();
+      alert("File and associated analysis deleted successfully!");
+    } catch (err) {
+      console.error("Error deleting file:", err);
+      alert(
+        err instanceof Error
+          ? err.message
+          : "Failed to delete file. Please try again."
+      );
+    }
   };
+
+  const handleAnalyze = (id: string) => {
+    window.location.href = `/dashboard/contract-analysis?resumeId=${id}`;
+  };
+
+  const handleViewAnalysis = (resumeId: string) => {
+    router.push(`/dashboard/analysis/${resumeId}`);
+  };
+
   return (
     <div className="px-4 py-8 max-w-4xl mx-auto">
       <Button asChild variant="ghost" size="sm" className="gap-2 mb-8">
@@ -59,11 +116,19 @@ export default function HistoryPage() {
       </Button>
 
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Analysis History</h1>
+        <h1 className="text-3xl font-bold mb-2">Upload History</h1>
         <p className="text-muted-foreground">
-          View your previous contract, salary, and job analyses
+          View and manage your uploaded contracts and documents
         </p>
       </div>
+
+      {error && (
+        <Card className="mb-4 border-destructive">
+          <CardContent className="pt-6">
+            <p className="text-destructive">{error}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {isLoading ? (
         <Card>
@@ -75,52 +140,87 @@ export default function HistoryPage() {
         <Card>
           <CardContent className="pt-12 text-center pb-12">
             <p className="text-muted-foreground mb-4">
-              No analyses yet. Start by using one of our tools!
+              No uploads yet. Start by uploading a contract!
             </p>
             <Button asChild>
-              <Link href="/dashboard">Go to Dashboard</Link>
+              <Link href="/dashboard/contract-analysis">Upload Contract</Link>
             </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-4">
           {history.map((item) => {
-            const iconData = getIcon(item.type);
-            const Icon = iconData.icon;
             return (
               <Card key={item.id} className="hover:shadow-md transition-all">
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
                     <div className="flex gap-4 flex-1">
-                      <div className={`p-3 bg-secondary rounded-lg h-fit`}>
-                        <Icon className={`h-5 w-5 ${iconData.color}`} />
+                      <div className="p-3 bg-secondary rounded-lg h-fit">
+                        <FileText className="h-5 w-5 text-blue-600" />
                       </div>
                       <div className="flex-1">
                         <h3 className="font-semibold text-lg mb-1">
-                          {item.title}
+                          {item.fileName}
                         </h3>
                         <p className="text-muted-foreground text-sm mb-2">
-                          {item.description}
+                          Size: {(item.fileSize / 1024).toFixed(2)} KB • Text:{" "}
+                          {item.textLength} chars
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(item.date).toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
+                          Uploaded:{" "}
+                          {new Date(item.uploadedAt).toLocaleDateString(
+                            "en-US",
+                            {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }
+                          )}
                         </p>
+                        {item.hasAnalysis && (
+                          <div className="flex items-center gap-1 mt-2">
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                            <span className="text-xs text-green-600 font-medium">
+                              Analyzed
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" title="View details">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="View file"
+                        onClick={() => window.open(item.fileUrl, "_blank")}
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
+                      {item.hasAnalysis ? (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleViewAnalysis(item.id)}
+                        >
+                          View Analysis
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAnalyze(item.id)}
+                        >
+                          Analyze
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
                         className="text-destructive hover:text-destructive"
                         title="Delete"
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => handleDelete(item.id, item.fileName)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
