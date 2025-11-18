@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 
@@ -12,44 +13,69 @@ export function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 max-w-7xl items-center justify-between mx-auto px-4">
-        <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
-            AI
-          </div>
-          <span className="hidden sm:inline">CareerSmart</span>
-        </Link>
+    <nav className="sticky top-0 z-50 w-full bg-[#0c1b8a] shadow-sm border-b border-[#0c1b8a]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 sm:h-20">
+          <Link
+            href={user ? "/dashboard" : "/"}
+            className="flex items-center space-x-3"
+          >
+            <Image
+              src="/kaka.png"
+              alt="KarirKit Logo"
+              width={40}
+              height={40}
+              className="w-10 h-10 object-contain"
+              priority
+              unoptimized
+            />
+            <span className="text-2xl font-bold text-white">KarirKit</span>
+          </Link>
 
-        <div className="flex items-center gap-4">
-          {user ? (
-            <>
-              <Link
-                href="/dashboard/profile"
-                className="text-sm text-foreground/70 hover:text-foreground transition-colors"
-              >
-                Profile
-              </Link>
-              <Link
-                href="/dashboard/history"
-                className="text-sm text-foreground/70 hover:text-foreground transition-colors"
-              >
-                History
-              </Link>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                Logout
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/login">Login</Link>
-              </Button>
-              <Button asChild size="sm">
-                <Link href="/register">Sign Up</Link>
-              </Button>
-            </>
-          )}
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            {user ? (
+              <>
+                <Link
+                  href="/dashboard/profile"
+                  className="hidden sm:inline-block text-sm font-medium text-white/90 hover:text-white transition-colors"
+                >
+                  Profile
+                </Link>
+                <Link
+                  href="/dashboard/history"
+                  className="hidden sm:inline-block text-sm font-medium text-white/90 hover:text-white transition-colors"
+                >
+                  History
+                </Link>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="rounded-xl border-white/50 bg-transparent text-white hover:border-white hover:bg-white hover:text-[#0c1b8a] font-medium transition-all cursor-pointer"
+                >
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="text-white/90 hover:text-white hover:bg-white/10 font-medium"
+                >
+                  <Link href="/login">Sign In</Link>
+                </Button>
+                <Button
+                  asChild
+                  size="sm"
+                  className="bg-white text-[#0c1b8a] hover:bg-white/90 font-medium rounded-xl shadow-lg hover:shadow-xl transition-all"
+                >
+                  <Link href="/register">Get Started</Link>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </nav>

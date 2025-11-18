@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -30,7 +31,15 @@ export default function LoginPage() {
     if (errorParam) {
       if (errorParam === "google") {
         setError(
-          "Google sign-in failed. Please check your Google Cloud Console configuration (Authorized redirect URIs)."
+          "🔴 Google sign-in failed. Configuration issue detected. Please check: (1) Authorized redirect URIs in Google Cloud Console must include 'http://localhost:3000/api/auth/callback/google' (2) Wait 5-10 minutes after making changes. See GOOGLE_OAUTH_SETUP.md for detailed instructions."
+        );
+      } else if (errorParam === "OAuthCallback") {
+        setError(
+          "OAuth callback error. Please verify your Google OAuth credentials and authorized redirect URIs."
+        );
+      } else if (errorParam === "Configuration") {
+        setError(
+          "NextAuth configuration error. Please check your environment variables."
         );
       } else {
         setError(`Authentication error: ${errorParam}`);
@@ -66,17 +75,47 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-background via-background to-secondary/5">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-2">
-          <CardTitle className="text-2xl">Welcome Back</CardTitle>
-          <CardDescription>Sign in to your CareerSmart account</CardDescription>
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-b from-white via-gray-50 to-white relative overflow-hidden">
+      {/* Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 right-10 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-10 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl"></div>
+      </div>
+
+      {/* Logo/Brand */}
+      <Link
+        href="/"
+        className="absolute top-8 left-8 flex items-center space-x-3 z-10"
+      >
+        <Image
+          src="/logo.png"
+          alt="KarirKit Logo"
+          width={40}
+          height={40}
+          className="w-10 h-10 object-contain"
+          priority
+          unoptimized
+        />
+        <span className="text-2xl font-bold text-gray-900">KarirKit</span>
+      </Link>
+
+      <Card className="w-full max-w-md border-0 shadow-2xl rounded-3xl relative z-10">
+        <CardHeader className="space-y-3 text-center pb-6">
+          <CardTitle className="text-3xl font-bold text-gray-900">
+            Welcome Back
+          </CardTitle>
+          <CardDescription className="text-base text-gray-600">
+            Sign in to continue your career journey
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <CardContent className="px-8 pb-8">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
-                Email
+              <label
+                htmlFor="email"
+                className="text-sm font-semibold text-gray-700"
+              >
+                Email Address
               </label>
               <Input
                 id="email"
@@ -85,10 +124,14 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="h-12 rounded-xl border-gray-200 focus:border-[#0c1b8a] focus:ring-[#0c1b8a]"
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
+              <label
+                htmlFor="password"
+                className="text-sm font-semibold text-gray-700"
+              >
                 Password
               </label>
               <Input
@@ -98,30 +141,37 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="h-12 rounded-xl border-gray-200 focus:border-[#0c1b8a] focus:ring-[#0c1b8a]"
               />
             </div>
             {error && (
-              <div className="text-sm text-destructive bg-destructive/5 p-3 rounded">
+              <div className="text-sm text-red-700 bg-red-50 border border-red-200 p-4 rounded-xl">
                 {error}
               </div>
             )}
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full h-12 bg-[#0c1b8a] hover:bg-[#0c1b8a]/90 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 transition-all"
+              disabled={isLoading}
+            >
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
 
-          <div className="relative my-4">
+          <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border"></div>
+              <div className="w-full border-t border-gray-200"></div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or</span>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-white px-3 text-gray-500 font-medium">
+                Or continue with
+              </span>
             </div>
           </div>
 
           <Button
             variant="outline"
-            className="w-full mb-4 bg-transparent"
+            className="w-full h-12 mb-6 bg-white border-2 border-gray-200 hover:border-[#0c1b8a] hover:bg-gray-50 rounded-xl font-semibold transition-all"
             onClick={handleGoogleSignIn}
             type="button"
           >
@@ -146,13 +196,13 @@ export default function LoginPage() {
             Continue with Google
           </Button>
 
-          <p className="text-center text-sm text-muted-foreground">
-            Dont have an account?{" "}
+          <p className="text-center text-sm text-gray-600">
+            Don't have an account?{" "}
             <Link
               href="/register"
-              className="text-primary hover:underline font-medium"
+              className="text-[#0c1b8a] hover:text-blue-700 font-semibold transition-colors"
             >
-              Sign up
+              Sign up for free
             </Link>
           </p>
         </CardContent>

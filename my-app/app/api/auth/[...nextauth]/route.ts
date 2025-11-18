@@ -32,10 +32,13 @@ export const authOptions: NextAuthOptions = {
       return baseUrl;
     },
     async signIn({ user, account, profile }) {
-      console.log("🔐 signIn callback triggered");
-      console.log("👤 User:", user.email);
+      console.log("\n🔐 ============ SIGN IN CALLBACK ============");
+      console.log("👤 User email:", user.email);
+      console.log("👤 User name:", user.name);
       console.log("🔗 Account provider:", account?.provider);
-      console.log("📋 Profile:", profile?.email);
+      console.log("🆔 Provider Account ID:", account?.providerAccountId);
+      console.log("📋 Profile email:", profile?.email);
+      console.log("==========================================\n");
 
       try {
         // Koneksi ke MongoDB
@@ -67,26 +70,37 @@ export const authOptions: NextAuthOptions = {
 
         // Generate JWT token dan simpan di cookies
         if (dbUser) {
-          const jwtToken = signToken({
-            id: dbUser._id.toString(),
-            email: dbUser.email,
-            fullname: dbUser.fullname,
-          });
+          try {
+            const jwtToken = signToken({
+              id: dbUser._id.toString(),
+              email: dbUser.email,
+              fullname: dbUser.fullname,
+            });
 
-          const cookieStore = await cookies();
-          cookieStore.set("token", jwtToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 60 * 60 * 24 * 7, // 7 hari
-            path: "/",
-          });
-          console.log("JWT token saved to cookies");
+            const cookieStore = await cookies();
+            cookieStore.set("token", jwtToken, {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === "production",
+              sameSite: "lax",
+              maxAge: 60 * 60 * 24 * 7, // 7 hari
+              path: "/",
+            });
+            console.log("✅ JWT token saved to cookies for:", dbUser.email);
+          } catch (cookieError) {
+            console.error("❌ Error setting cookie:", cookieError);
+            // Continue anyway - NextAuth session will still work
+          }
         }
 
         return true;
       } catch (error) {
+        console.error("\n❌ ============ SIGN IN ERROR ============");
         console.error("Error saving user to MongoDB:", error);
+        console.error("Error details:", {
+          message: error instanceof Error ? error.message : "Unknown error",
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+        console.error("=========================================\n");
         return false;
       }
     },

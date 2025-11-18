@@ -47,10 +47,10 @@ Analyze the following CV/Resume and extract the following information in JSON fo
   "position": "Job title/position the person is looking for or has experience in",
   "skills": "Comma-separated list of key technical skills",
   "experienceLevel": "junior/mid/senior based on years of experience",
-  "yearsOfExperience": "Number of years of work experience",
+  "yearsOfExperience": "Number of years of work experience in related skills",
   "location": "Preferred work location or current location",
   "industry": "Industry domain (e.g., Technology, Finance, Healthcare)",
-  "expectedSalary": "Expected salary range if mentioned, or estimate based on experience and position"
+  "expectedSalary": "Expected salary range if mentioned, or return 0 if not specified"
 }
 
 CV/Resume Text:
