@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import ResumeModel from "@/db/models/ResumeModel";
 import cloudinary from "@/db/config/cloudinary";
+import { getServerUser } from "@/helpers/auth";
+import { JWTPayload } from "@/types/jwt";
 
 export async function POST(request: NextRequest) {
   try {
+    // Get logged in user
+    const user = (await getServerUser()) as JWTPayload | null;
+    if (!user || !user.userId) {
+      return NextResponse.json(
+        { message: "Unauthorized. Please login first." },
+        { status: 401 }
+      );
+    }
+
+    console.log("👤 User ID:", user.userId);
+
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
@@ -94,13 +107,9 @@ export async function POST(request: NextRequest) {
           );
           console.log("📝 Text preview:", extractedText.substring(0, 200));
 
-          // Check if extraction actually worked
-          const trimmedText = extractedText.trim();
-          if (trimmedText.length === 0 || extractedText === "{}") {
-            console.warn("⚠️ N8N returned empty or whitespace-only text");
-            console.warn("⚠️ This PDF might be a scanned image requiring OCR");
-            extractedText =
-              "[PDF_EXTRACTION_FAILED: This PDF appears to be a scanned image. Please upload a text-based PDF or contact support for OCR capabilities.]";
+          if (extractedText.length === 0 || extractedText === "{}") {
+            console.warn("⚠️ All fields empty, response:", n8nData);
+            extractedText = "[N8N returned empty text]";
           }
         } else {
           const errorText = await n8nResponse.text();
@@ -154,9 +163,10 @@ export async function POST(request: NextRequest) {
     // Kirim ke n8n untuk OCR/analysis (skipped - already extracted above)
     console.log("📝 Extracted text length:", extractedText.length);
 
-    // Simpan ke MongoDB
-    console.log("💾 Saving to MongoDB...");
+    // Simpan ke MongoDB dengan userId
+    console.log("💾 Saving to MongoDB with userId:", user.userId);
     const resume = await ResumeModel.create({
+      userId: user.userId,
       fileName: file.name,
       fileUrl: imageUrl,
       cloudinaryPublicId: uploadResult.publicId,
@@ -169,12 +179,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         message: "File uploaded and processed successfully",
-        url: imageUrl,
-        resumeId: resume._id.toString(),
-        fileName: file.name,
-        fileSize: file.size,
-        extractedText: extractedText,
-        textLength: extractedText.length,
+        data: {
+          resumeId: resume._id.toString(),
+          fileUrl: imageUrl,
+          fileName: file.name,
+          fileSize: file.size,
+          textExtracted: extractedText.length > 0,
+          textLength: extractedText.length,
+          textPreview: extractedText.substring(0, 200),
+        },
       },
       { status: 200 }
     );

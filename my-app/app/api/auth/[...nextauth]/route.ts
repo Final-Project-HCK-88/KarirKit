@@ -4,25 +4,13 @@ import { database } from "@/db/config/mongodb";
 import { signToken } from "@/helpers/jwt";
 import { cookies } from "next/headers";
 
-// Debug: Check env variables
-console.log(
-  "🔑 GOOGLE_CLIENT_ID:",
-  process.env.GOOGLE_CLIENT_ID?.substring(0, 20) + "..."
-);
-console.log("🔑 NEXTAUTH_URL:", process.env.NEXTAUTH_URL);
-console.log(
-  "🔑 NEXTAUTH_SECRET:",
-  process.env.NEXTAUTH_SECRET ? "✅ Set" : "❌ Not set"
-);
-
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      clientId: process.env.Client_ID as string,
+      clientSecret: process.env.Client_Secret as string,
     }),
   ],
-  debug: true, // Enable debug mode
   callbacks: {
     async redirect({ url, baseUrl }) {
       // After successful Google login, redirect to dashboard
@@ -31,15 +19,7 @@ export const authOptions: NextAuthOptions = {
       }
       return baseUrl;
     },
-    async signIn({ user, account, profile }) {
-      console.log("\n🔐 ============ SIGN IN CALLBACK ============");
-      console.log("👤 User email:", user.email);
-      console.log("👤 User name:", user.name);
-      console.log("🔗 Account provider:", account?.provider);
-      console.log("🆔 Provider Account ID:", account?.providerAccountId);
-      console.log("📋 Profile email:", profile?.email);
-      console.log("==========================================\n");
-
+    async signIn({ user, account }) {
       try {
         // Koneksi ke MongoDB
         const usersCollection = database.collection("users");
@@ -70,37 +50,26 @@ export const authOptions: NextAuthOptions = {
 
         // Generate JWT token dan simpan di cookies
         if (dbUser) {
-          try {
-            const jwtToken = signToken({
-              id: dbUser._id.toString(),
-              email: dbUser.email,
-              fullname: dbUser.fullname,
-            });
+          const jwtToken = signToken({
+            id: dbUser._id.toString(),
+            email: dbUser.email,
+            fullname: dbUser.fullname,
+          });
 
-            const cookieStore = await cookies();
-            cookieStore.set("token", jwtToken, {
-              httpOnly: true,
-              secure: process.env.NODE_ENV === "production",
-              sameSite: "lax",
-              maxAge: 60 * 60 * 24 * 7, // 7 hari
-              path: "/",
-            });
-            console.log("✅ JWT token saved to cookies for:", dbUser.email);
-          } catch (cookieError) {
-            console.error("❌ Error setting cookie:", cookieError);
-            // Continue anyway - NextAuth session will still work
-          }
+          const cookieStore = await cookies();
+          cookieStore.set("token", jwtToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 60 * 60 * 24 * 7, // 7 hari
+            path: "/",
+          });
+          console.log("JWT token saved to cookies");
         }
 
         return true;
       } catch (error) {
-        console.error("\n❌ ============ SIGN IN ERROR ============");
         console.error("Error saving user to MongoDB:", error);
-        console.error("Error details:", {
-          message: error instanceof Error ? error.message : "Unknown error",
-          stack: error instanceof Error ? error.stack : undefined,
-        });
-        console.error("=========================================\n");
         return false;
       }
     },

@@ -1,18 +1,98 @@
 import { NextRequest, NextResponse } from "next/server";
 import ResumeModel from "@/db/models/ResumeModel";
+import AnalysisModel from "@/db/models/AnalysisModel";
 import { analyzeCVWithGemini } from "@/helpers/gemini";
+import { getServerUser } from "@/helpers/auth";
+import { JWTPayload } from "@/types/jwt";
+
+export async function GET(request: NextRequest) {
+  try {
+    console.log("\n🔍 === GET ANALYSIS API STARTED ===");
+
+    // Get logged in user
+    const user = (await getServerUser()) as JWTPayload | null;
+    if (!user || !user.userId) {
+      return NextResponse.json(
+        { message: "Unauthorized. Please login first." },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const resumeId = searchParams.get("resumeId");
+
+    if (!resumeId) {
+      return NextResponse.json(
+        { message: "Resume ID is required" },
+        { status: 400 }
+      );
+    }
+
+    console.log("📋 Fetching analysis for resumeId:", resumeId);
+
+    // Check if analysis exists
+    const existingAnalysis = await AnalysisModel.findByResumeIdAndUserId(
+      resumeId,
+      user.userId
+    );
+
+    if (!existingAnalysis || existingAnalysis.length === 0) {
+      return NextResponse.json(
+        {
+          message: "No analysis found for this resume",
+          hasAnalysis: false,
+        },
+        { status: 404 }
+      );
+    }
+
+    const analysis = existingAnalysis[0];
+
+    return NextResponse.json(
+      {
+        message: "Analysis found",
+        hasAnalysis: true,
+        data: {
+          analysisId: analysis._id.toString(),
+          analysis: analysis.result,
+          analyzedAt: analysis.createdAt,
+          updatedAt: analysis.updatedAt,
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("❌ Error fetching analysis:", error);
+    return NextResponse.json(
+      {
+        message: "Failed to fetch analysis",
+        error: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
     console.log("\n🔍 === ANALYZE CV API STARTED ===");
+
+    // Get logged in user
+    const user = (await getServerUser()) as JWTPayload | null;
+    if (!user || !user.userId) {
+      return NextResponse.json(
+        { message: "Unauthorized. Please login first." },
+        { status: 401 }
+      );
+    }
+
+    console.log("👤 User ID:", user.userId);
+
     const body = await request.json();
-    console.log("📦 Full request body:", JSON.stringify(body));
     const { resumeId } = body;
     console.log("📋 Resume ID received:", resumeId);
-    console.log("📋 Resume ID type:", typeof resumeId);
 
     if (!resumeId) {
-      console.error("❌ Resume ID is missing or undefined!");
       return NextResponse.json(
         { message: "Resume ID is required" },
         { status: 400 }
@@ -30,34 +110,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validasi: Resume harus milik user yang sedang login
+    if (resume.userId !== user.userId) {
+      return NextResponse.json(
+        { message: "Forbidden. This resume does not belong to you." },
+        { status: 403 }
+      );
+    }
+
     const pdfText = resume.extractedText;
 
-    console.log("📝 Extracted text raw length:", pdfText?.length || 0);
-    console.log(
-      "📝 Extracted text trimmed length:",
-      pdfText?.trim().length || 0
-    );
-    console.log("📝 Text preview:", pdfText?.substring(0, 100));
-
     if (!pdfText || pdfText.trim().length === 0) {
-      console.error(
-        "❌ No valid text extracted from PDF. N8N extraction may have failed."
-      );
       return NextResponse.json(
-        {
-          message:
-            "No text could be extracted from the PDF. The document might be scanned image or n8n extraction failed. Please try a different PDF or check if the file contains selectable text.",
-          error: "EMPTY_TEXT",
-          debug: {
-            rawLength: pdfText?.length || 0,
-            trimmedLength: pdfText?.trim().length || 0,
-          },
-        },
+        { message: "No text found in resume. Please upload PDF first." },
         { status: 400 }
       );
     }
 
     console.log("📝 Extracted text length:", pdfText.length);
+
+    // Check if analysis already exists for this resume
+    console.log("🔍 Checking for existing analysis...");
+    const existingAnalysis = await AnalysisModel.findByResumeIdAndUserId(
+      resumeId,
+      user.userId
+    );
+
+    if (existingAnalysis && existingAnalysis.length > 0) {
+      console.log("✅ Found existing analysis, returning cached result");
+      return NextResponse.json(
+        {
+          message: "Analysis retrieved from cache",
+          data: {
+            analysisId: existingAnalysis[0]._id.toString(),
+            rawText: pdfText.substring(0, 500) + "...",
+            textLength: pdfText.length,
+            analysis: existingAnalysis[0].result,
+            source: "cached",
+            analyzedAt: existingAnalysis[0].createdAt,
+          },
+        },
+        { status: 200 }
+      );
+    }
 
     // Step 2: Analyze dengan Gemini AI
     console.log("🤖 Analyzing with Gemini AI...");
@@ -67,14 +162,27 @@ export async function POST(request: NextRequest) {
 
       console.log("✅ Gemini analysis successful");
 
+      // Save analysis to database
+      console.log("💾 Saving analysis to database...");
+      const savedAnalysis = await AnalysisModel.create({
+        userId: user.userId,
+        resumeId: resumeId,
+        analysisType: "contract",
+        result: analysis,
+      });
+
+      console.log("✅ Analysis saved with ID:", savedAnalysis._id);
+
       return NextResponse.json(
         {
           message: "CV analyzed successfully with Gemini AI",
           data: {
+            analysisId: savedAnalysis._id.toString(),
             rawText: pdfText.substring(0, 500) + "...", // Preview saja
             textLength: pdfText.length,
             analysis: analysis,
             source: "gemini-ai",
+            analyzedAt: savedAnalysis.createdAt,
           },
         },
         { status: 200 }
@@ -141,6 +249,88 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         message: "Failed to analyze CV",
+        error: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    console.log("\n🗑️ === DELETE RESUME & ANALYSIS API STARTED ===");
+
+    // Get logged in user
+    const user = (await getServerUser()) as JWTPayload | null;
+    if (!user || !user.userId) {
+      return NextResponse.json(
+        { message: "Unauthorized. Please login first." },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const resumeId = searchParams.get("resumeId");
+
+    if (!resumeId) {
+      return NextResponse.json(
+        { message: "Resume ID is required" },
+        { status: 400 }
+      );
+    }
+
+    console.log("📋 Deleting resume ID:", resumeId);
+
+    // Check if resume exists and belongs to user
+    const resume = await ResumeModel.findById(resumeId);
+
+    if (!resume) {
+      return NextResponse.json(
+        { message: "Resume not found" },
+        { status: 404 }
+      );
+    }
+
+    if (resume.userId !== user.userId) {
+      return NextResponse.json(
+        { message: "Forbidden. This resume does not belong to you." },
+        { status: 403 }
+      );
+    }
+
+    // Delete associated analyses first (cascade delete)
+    console.log("🗑️ Deleting associated analyses...");
+    const deletedAnalyses = await AnalysisModel.deleteByResumeId(resumeId);
+    console.log(`✅ Deleted ${deletedAnalyses} analysis records`);
+
+    // Delete the resume
+    console.log("🗑️ Deleting resume...");
+    const deletedResume = await ResumeModel.deleteById(resumeId);
+
+    if (!deletedResume) {
+      return NextResponse.json(
+        { message: "Failed to delete resume" },
+        { status: 500 }
+      );
+    }
+
+    console.log("✅ Resume and analyses deleted successfully");
+
+    return NextResponse.json(
+      {
+        message: "Resume and associated analyses deleted successfully",
+        data: {
+          resumeId,
+          deletedAnalyses,
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("❌ Error deleting resume:", error);
+    return NextResponse.json(
+      {
+        message: "Failed to delete resume",
         error: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }

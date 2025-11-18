@@ -1,23 +1,23 @@
 import { GoogleGenAI } from "@google/genai";
-import { generateOpenAIContent } from "./openai";
 
 // Bersihkan API key dari spasi
-const apiKey = (process.env.GEMINI_API_KEY || "").replace(/\s+/g, "");
+const apiKey = (process.env.Gemini_API_Key || "").replace(/\s+/g, "");
 
 if (!apiKey) {
   console.error("⚠️ Gemini API Key is not configured");
 }
 
 const client = new GoogleGenAI({ apiKey });
-const USE_OPENAI = process.env.USE_OPENAI === "true";
 
 export async function analyzeCVWithGemini(cvText: string) {
   try {
-    console.log(
-      USE_OPENAI
-        ? "🤖 Using OpenAI for Contract analysis..."
-        : "🤖 Using Gemini for Contract analysis..."
-    );
+    if (!apiKey) {
+      throw new Error(
+        "Gemini API Key is not configured in environment variables"
+      );
+    }
+
+    console.log("🤖 Calling Gemini API for Contract analysis...");
 
     // Jika terlalu panjang, pangkas agar tidak melebihi batas prompt
     const MAX_CHARS = 12000;
@@ -70,44 +70,20 @@ export async function analyzeCVWithGemini(cvText: string) {
 CONTRACT TEXT:
 ${inputText}`;
 
-    let text: string;
+    // Gunakan gemini-2.0-flash (free tier, terbaru)
+    const response = await client.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+    });
 
-    if (USE_OPENAI) {
-      // Use OpenAI
-      text = await generateOpenAIContent(prompt, "gpt-4o-mini", 2500);
-    } else {
-      // Use Gemini
-      const response = await client.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: prompt,
-      });
+    const text = response.text;
+    console.log("✅ Gemini response received (contract analysis)");
 
-      text = response.text;
-      console.log("✅ Gemini response received (contract analysis)");
-
-      // Log token usage
-      if (response.usageMetadata) {
-        console.log("📊 Token Usage:");
-        console.log(
-          "  - Prompt tokens:",
-          response.usageMetadata.promptTokenCount
-        );
-        console.log(
-          "  - Response tokens:",
-          response.usageMetadata.candidatesTokenCount
-        );
-        console.log(
-          "  - Total tokens:",
-          response.usageMetadata.totalTokenCount
-        );
-      }
-
-      if (!text) {
-        throw new Error("Empty response from Gemini API");
-      }
+    if (!text) {
+      throw new Error("Empty response from Gemini API");
     }
 
-    console.log("📄 Full response:");
+    console.log("📄 Full Gemini response:");
     console.log("=".repeat(80));
     console.log(text);
     console.log("=".repeat(80));
@@ -185,11 +161,7 @@ export async function summarizePDF(pdfText: string) {
       );
     }
 
-    console.log(
-      USE_OPENAI
-        ? "🤖 Using OpenAI for summarization..."
-        : "🤖 Using Gemini for summarization..."
-    );
+    console.log("🤖 Calling Gemini API for summarization...");
 
     // Jika teks terlalu panjang, pangkas sebelum dikirim
     const MAX_SUMMARY_CHARS = 12000;
@@ -197,7 +169,7 @@ export async function summarizePDF(pdfText: string) {
     if (pdfText.length > MAX_SUMMARY_CHARS) {
       input = pdfText.slice(0, MAX_SUMMARY_CHARS) + "\n\n[TRUNCATED]";
       console.warn(
-        "⚠️ PDF text truncated for summarization. Original length:",
+        "⚠️ PDF text truncated for Gemini summarization. Original length:",
         pdfText.length
       );
     }
@@ -208,37 +180,13 @@ DOCUMENT:\n${input}
 
 Max 300 words in human-readable text inside the JSON fields.`;
 
-    let text: string;
+    // Gunakan gemini-2.0-flash-exp (free tier, terbaru)
+    const response = await client.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+    });
 
-    if (USE_OPENAI) {
-      // Use OpenAI
-      text = await generateOpenAIContent(prompt, "gpt-4o-mini", 800);
-    } else {
-      // Use Gemini
-      const response = await client.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: prompt,
-      });
-
-      text = response.text;
-
-      // Log token usage
-      if (response.usageMetadata) {
-        console.log("📊 Token Usage (summarize):");
-        console.log(
-          "  - Prompt tokens:",
-          response.usageMetadata.promptTokenCount
-        );
-        console.log(
-          "  - Response tokens:",
-          response.usageMetadata.candidatesTokenCount
-        );
-        console.log(
-          "  - Total tokens:",
-          response.usageMetadata.totalTokenCount
-        );
-      }
-    }
+    const text = response.text;
     console.log("✅ Gemini summary received (short prompt)");
 
     if (!text) {

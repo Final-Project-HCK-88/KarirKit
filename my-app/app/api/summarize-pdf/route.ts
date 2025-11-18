@@ -5,13 +5,10 @@ export async function POST(request: NextRequest) {
   try {
     console.log("\n📝 === SUMMARIZE PDF API STARTED ===");
     const body = await request.json();
-    console.log("📦 Full request body:", JSON.stringify(body));
     const { resumeId } = body;
     console.log("📋 Resume ID received:", resumeId);
-    console.log("📋 Resume ID type:", typeof resumeId);
 
     if (!resumeId) {
-      console.error("❌ Resume ID is missing or undefined!");
       return NextResponse.json(
         { message: "Resume ID is required" },
         { status: 400 }
@@ -31,22 +28,9 @@ export async function POST(request: NextRequest) {
 
     const pdfText = resume.extractedText;
 
-    console.log("📝 Extracted text raw length:", pdfText?.length || 0);
-    console.log(
-      "📝 Extracted text trimmed length:",
-      pdfText?.trim().length || 0
-    );
-
     if (!pdfText || pdfText.trim().length === 0) {
-      console.error(
-        "❌ No valid text extracted from PDF. N8N extraction may have failed."
-      );
       return NextResponse.json(
-        {
-          message:
-            "No text could be extracted from the PDF. The document might be a scanned image or n8n extraction failed. Please try uploading a text-based PDF.",
-          error: "EMPTY_TEXT",
-        },
+        { message: "No text found in PDF" },
         { status: 400 }
       );
     }

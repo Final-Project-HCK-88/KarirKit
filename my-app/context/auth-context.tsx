@@ -106,35 +106,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch("/api/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-
-      // Hapus token dari cookies
+      // Delete the token cookie
       document.cookie = "token=; path=/; max-age=0";
+
+      // Sign out from NextAuth (for Google OAuth users)
+      try {
+        const { signOut } = await import("next-auth/react");
+        await signOut({ redirect: false });
+      } catch {
+        // Ignore if NextAuth is not available
+      }
+
+      // Optionally call logout API if it exists
+      try {
+        await fetch("/api/logout", {
+          method: "POST",
+          credentials: "include",
+        });
+      } catch {
+        // Ignore API errors, cookie is already deleted
+      }
 
       setUser(null);
       router.push("/login");
     } catch (error) {
       console.error("Logout failed:", error);
-      // Tetap hapus cookie dan redirect meskipun API gagal
-      document.cookie = "token=; path=/; max-age=0";
-      setUser(null);
-      router.push("/login");
     }
   };
 
   const signInWithGoogle = async () => {
-    // Redirect to NextAuth Google provider (use assign and log for easier debugging)
     try {
-      // log so user can see the action in browser console
-      // eslint-disable-next-line no-console
-      console.log("Auth: redirecting to /api/auth/signin/google");
-      window.location.assign("/api/auth/signin/google");
+      // Import signIn from next-auth/react dynamically
+      const { signIn } = await import("next-auth/react");
+
+      // Use NextAuth's signIn function which handles the full OAuth flow
+      const result = await signIn("google", {
+        callbackUrl: "/dashboard",
+        redirect: true,
+      });
+
+      if (result?.error) {
+        console.error("Google sign-in error:", result.error);
+        throw new Error(result.error);
+      }
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("Auth: failed to redirect to Google sign-in", err);
+      console.error("Failed to sign in with Google:", err);
       throw err;
     }
   };
@@ -148,7 +164,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const response = await fetch("/api/profile", {
       method: "PUT",
-      credentials: "include", // Send cookies
       body: formData,
     });
 
@@ -157,21 +172,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(error.message || "Failed to update profile");
     }
 
-    const data = await response.json();
-
-    // Update user state dengan data baru
-    if (data.data && user) {
-      setUser({
-        ...user,
-        fullname: data.data.fullname,
-        image: data.data.image,
-      });
-    } else {
-      // Fallback: refresh user data from API
-      await checkAuth();
-    }
-
-    return data;
+    // Refresh user data after update
+    await checkAuth();
   };
 
   const refreshUser = async () => {

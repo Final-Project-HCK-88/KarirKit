@@ -1,6 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Upload, FileText, Download, Eye, Loader2, AlertCircle, CheckCircle2, FileCheck, Sparkles } from "lucide-react";
 
 interface UploadResult {
   url: string;
@@ -198,142 +207,206 @@ export default function UploadPdfComponent() {
   };
 
   return (
-    <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-4">Upload PDF Contract</h2>
-
-      <div className="space-y-4">
-        {/* File Input */}
-        <div>
-          <label
-            htmlFor="pdf-upload"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Select PDF File
-          </label>
-          <input
-            id="pdf-upload"
-            type="file"
-            accept="application/pdf"
-            onChange={handleFileChange}
-            className="block w-full text-sm text-gray-500
-              file:mr-4 file:py-2 file:px-4
-              file:rounded-md file:border-0
-              file:text-sm file:font-semibold
-              file:bg-blue-50 file:text-blue-700
-              hover:file:bg-blue-100
-              cursor-pointer"
-          />
-          {file && (
-            <p className="mt-2 text-sm text-gray-600">
-              Selected: {file.name} ({(file.size / 1024).toFixed(2)} KB)
-            </p>
-          )}
-        </div>
-
-        {/* Upload Button */}
-        <button
-          onClick={handleUpload}
-          disabled={!file || uploading}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md
-            hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed
-            transition-colors font-medium"
-        >
-          {uploading ? "Uploading..." : "Upload PDF"}
-        </button>
-
-        {/* Error Message */}
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )}
-
-        {/* Success Result */}
-        {result && (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-md space-y-3">
-            <p className="text-sm font-semibold text-green-800">
-              ✅ Upload Successful!
-            </p>
-            <div className="text-sm text-gray-700 space-y-2">
-              <p>
-                <strong>File:</strong> {result.fileName}
-              </p>
-              <p>
-                <strong>Size:</strong> {(result.fileSize / 1024).toFixed(2)} KB
-              </p>
-              <p>
-                <strong>Extracted Text:</strong> {result.textLength} characters
-              </p>
-              <div className="flex gap-2 flex-wrap">
-                <a
-                  href={result.viewUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
-                >
-                  📄 View PDF
-                </a>
-                <a
-                  href={result.url}
-                  download
-                  className="inline-block px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm font-medium"
-                >
-                  ⬇️ Download
-                </a>
-                <button
-                  onClick={handleAnalyzeCV}
-                  disabled={analyzing}
-                  className="inline-block px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
-                >
-                  {analyzing ? "🔄 Analyzing..." : "🤖 Analyze CV"}
-                </button>
-                <button
-                  onClick={handleSummarize}
-                  disabled={summarizing}
-                  className="inline-block px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
-                >
-                  {summarizing ? "🔄 Summarizing..." : "📝 Summarize"}
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 break-all">
-                <strong>Direct Link:</strong> {result.viewUrl}
-              </p>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Upload PDF Contract
+          </CardTitle>
+          <CardDescription>
+            Upload your contract document for analysis (PDF only, max 10MB)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* File Input */}
+          <div className="border-2 border-dashed border-border rounded-lg p-8 text-center space-y-4">
+            <Upload className="h-10 w-10 text-muted-foreground mx-auto" />
+            <div>
+              <label htmlFor="pdf-upload" className="cursor-pointer">
+                <input
+                  id="pdf-upload"
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <div className="space-y-2">
+                  <p className="font-medium">
+                    {file ? "File selected" : "Drag and drop your file here"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    or click to browse
+                  </p>
+                </div>
+              </label>
+              {file && (
+                <div className="mt-4 flex items-center justify-center gap-2 text-sm text-green-600">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>
+                    {file.name} ({(file.size / 1024).toFixed(2)} KB)
+                  </span>
+                </div>
+              )}
             </div>
+            <Button variant="outline" asChild>
+              <label htmlFor="pdf-upload" className="cursor-pointer">
+                Choose File
+              </label>
+            </Button>
           </div>
-        )}
 
-        {/* Summary Result */}
-        {summary && (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-md space-y-3">
-            <h3 className="text-lg font-bold text-green-900">
-              📝 Document Summary
-            </h3>
-            <div className="text-sm text-gray-700 whitespace-pre-wrap">
+          {/* Upload Button */}
+          <Button
+            onClick={handleUpload}
+            disabled={!file || uploading}
+            className="w-full"
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload PDF
+              </>
+            )}
+          </Button>
+
+          {/* Error Message */}
+          {error && (
+            <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
+
+          {/* Success Result */}
+          {result && (
+            <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-900">
+              <CardHeader>
+                <CardTitle className="text-green-800 dark:text-green-200 flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5" />
+                  Upload Successful!
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2 text-sm">
+                  <p>
+                    <strong>File:</strong> {result.fileName}
+                  </p>
+                  <p>
+                    <strong>Size:</strong> {(result.fileSize / 1024).toFixed(2)}{" "}
+                    KB
+                  </p>
+                  <p>
+                    <strong>Extracted Text:</strong> {result.textLength}{" "}
+                    characters
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <a
+                      href={result.viewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View PDF
+                    </a>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={result.url} download>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download
+                    </a>
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleAnalyzeCV}
+                    disabled={analyzing}
+                  >
+                    {analyzing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <FileCheck className="mr-2 h-4 w-4" />
+                        Analyze CV
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleSummarize}
+                    disabled={summarizing}
+                  >
+                    {summarizing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Summarizing...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Summarize
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Summary Result */}
+      {summary && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              Document Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm whitespace-pre-wrap text-muted-foreground">
               {summary}
             </div>
-          </div>
-        )}
+          </CardContent>
+        </Card>
+      )}
 
-        {/* CV Analysis Result */}
-        {analysis && (
-          <div className="p-4 bg-purple-50 border border-purple-200 rounded-md space-y-3">
-            <h3 className="text-lg font-bold text-purple-900">
-              📊 Contract Analysis
-            </h3>
-
+      {/* CV Analysis Result */}
+      {analysis && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileCheck className="h-5 w-5" />
+              Contract Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
             {/* Summary */}
             <div>
-              <h4 className="font-semibold text-gray-800 mb-1">Summary:</h4>
-              <p className="text-sm text-gray-700">{analysis.summary}</p>
+              <h4 className="font-semibold mb-2">Summary:</h4>
+              <p className="text-sm text-muted-foreground">{analysis.summary}</p>
             </div>
 
             {/* Contract Info */}
             {analysis.contractInfo && (
-              <div className="bg-white p-3 rounded border">
-                <h4 className="font-semibold text-gray-800 mb-2">
-                  📋 Contract Details:
-                </h4>
-                <div className="text-sm text-gray-700 space-y-1">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Contract Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
                   <p>
                     <strong>Position:</strong> {analysis.contractInfo.position}
                   </p>
@@ -350,17 +423,17 @@ export default function UploadPdfComponent() {
                   <p>
                     <strong>Duration:</strong> {analysis.contractInfo.duration}
                   </p>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* Salary */}
             {analysis.salary && (
-              <div className="bg-green-50 p-3 rounded border border-green-200">
-                <h4 className="font-semibold text-gray-800 mb-2">
-                  💰 Salary & Benefits:
-                </h4>
-                <div className="text-sm text-gray-700 space-y-1">
+              <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-900">
+                <CardHeader>
+                  <CardTitle className="text-base">Salary & Benefits</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
                   <p>
                     <strong>Amount:</strong> {analysis.salary.amount}{" "}
                     {analysis.salary.currency}
@@ -372,7 +445,7 @@ export default function UploadPdfComponent() {
                     analysis.salary.additionalBenefits.length > 0 && (
                       <div>
                         <strong>Benefits:</strong>
-                        <ul className="list-disc list-inside ml-2">
+                        <ul className="list-disc list-inside ml-2 mt-1">
                           {analysis.salary.additionalBenefits.map(
                             (benefit, index) => (
                               <li key={index}>{benefit}</li>
@@ -381,17 +454,17 @@ export default function UploadPdfComponent() {
                         </ul>
                       </div>
                     )}
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* Working Conditions */}
             {analysis.workingConditions && (
-              <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                <h4 className="font-semibold text-gray-800 mb-2">
-                  🏢 Working Conditions:
-                </h4>
-                <div className="text-sm text-gray-700 space-y-1">
+              <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900">
+                <CardHeader>
+                  <CardTitle className="text-base">Working Conditions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
                   <p>
                     <strong>Hours:</strong>{" "}
                     {analysis.workingConditions.workingHours}
@@ -401,32 +474,34 @@ export default function UploadPdfComponent() {
                     {analysis.workingConditions.location}
                   </p>
                   <p>
-                    <strong>Policy:</strong>{" "}
+                    <strong>Remote Policy:</strong>{" "}
                     {analysis.workingConditions.remotePolicy}
                   </p>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
 
-            {/* Warnings - HIGHLIGHT */}
+            {/* Warnings */}
             {analysis.warnings && analysis.warnings.length > 0 && (
-              <div className="bg-yellow-50 p-3 rounded border-2 border-yellow-400">
-                <h4 className="font-semibold text-red-800 mb-2">
-                  ⚠️ Warnings & Risk Highlights:
-                </h4>
-                <div className="space-y-3">
+              <Card className="bg-yellow-50 dark:bg-yellow-950 border-yellow-400 dark:border-yellow-900 border-2">
+                <CardHeader>
+                  <CardTitle className="text-base text-yellow-900 dark:text-yellow-200">
+                    Warnings & Risk Highlights
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
                   {analysis.warnings.map((warning, index) => (
                     <div
                       key={index}
-                      className={`p-2 rounded border-l-4 ${
+                      className={`p-3 rounded-lg border-l-4 ${
                         warning.severity === "high"
-                          ? "bg-red-100 border-red-600"
+                          ? "bg-red-100 dark:bg-red-950 border-red-600"
                           : warning.severity === "medium"
-                          ? "bg-orange-100 border-orange-600"
-                          : "bg-yellow-100 border-yellow-600"
+                          ? "bg-orange-100 dark:bg-orange-950 border-orange-600"
+                          : "bg-yellow-100 dark:bg-yellow-950 border-yellow-600"
                       }`}
                     >
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-2">
                         <span
                           className={`px-2 py-0.5 rounded text-xs font-bold ${
                             warning.severity === "high"
@@ -439,74 +514,82 @@ export default function UploadPdfComponent() {
                           {warning.severity.toUpperCase()}
                         </span>
                       </div>
-                      <p className="text-sm font-medium text-gray-900 mb-1">
+                      <p className="text-sm font-medium mb-1">
                         <strong>Clause:</strong> &ldquo;{warning.clause}&rdquo;
                       </p>
-                      <p className="text-sm text-gray-700 mb-1">
+                      <p className="text-sm mb-1">
                         <strong>Issue:</strong> {warning.issue}
                       </p>
-                      <p className="text-sm text-blue-700">
-                        <strong>💡 Recommendation:</strong>{" "}
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        <strong>Recommendation:</strong>{" "}
                         {warning.recommendation}
                       </p>
                     </div>
                   ))}
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* Red Flags */}
             {analysis.redFlags && analysis.redFlags.length > 0 && (
-              <div className="bg-red-50 p-3 rounded border-2 border-red-600">
-                <h4 className="font-semibold text-red-800 mb-2">
-                  🚩 Red Flags:
-                </h4>
-                <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
-                  {analysis.redFlags.map((flag, index) => (
-                    <li key={index} className="font-medium">
-                      {flag}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <Card className="bg-red-50 dark:bg-red-950 border-red-600 dark:border-red-900 border-2">
+                <CardHeader>
+                  <CardTitle className="text-base text-red-900 dark:text-red-200">
+                    Red Flags
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="list-disc list-inside text-sm space-y-1 text-red-700 dark:text-red-300">
+                    {analysis.redFlags.map((flag, index) => (
+                      <li key={index} className="font-medium">
+                        {flag}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
             )}
 
             {/* Key Terms */}
             {analysis.keyTerms && analysis.keyTerms.length > 0 && (
-              <div className="bg-white p-3 rounded border">
-                <h4 className="font-semibold text-gray-800 mb-2">
-                  📝 Key Terms:
-                </h4>
-                <div className="space-y-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Key Terms</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
                   {analysis.keyTerms.map((term, index) => (
                     <div
                       key={index}
-                      className="border-l-2 border-purple-300 pl-3"
+                      className="border-l-2 border-primary pl-3 py-1"
                     >
                       <p className="font-medium text-sm">{term.term}</p>
-                      <p className="text-xs text-gray-600">
+                      <p className="text-xs text-muted-foreground">
                         {term.description}
                       </p>
                     </div>
                   ))}
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* Recommendations */}
             {analysis.recommendations && (
-              <div className="bg-blue-50 p-3 rounded border border-blue-300">
-                <h4 className="font-semibold text-gray-800 mb-1">
-                  💡 Overall Recommendations:
-                </h4>
-                <p className="text-sm text-gray-700">
-                  {analysis.recommendations}
-                </p>
-              </div>
+              <Card className="bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-900">
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    Overall Recommendations
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    {analysis.recommendations}
+                  </p>
+                </CardContent>
+              </Card>
             )}
-          </div>
-        )}
-      </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
