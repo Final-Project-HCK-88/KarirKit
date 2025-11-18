@@ -1,28 +1,27 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Upload, Loader } from "lucide-react"
-import { ContractAnalysisResult } from "@/components/contract-analysis-result"
-import UploadPdfComponent from "@/components/UploadPdfComponent"
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Loader } from "lucide-react";
+import { ContractAnalysisResult } from "@/components/contract-analysis-result";
+import UploadPdfComponent from "@/components/UploadPdfComponent";
 
 interface AnalysisResult {
-  redFlags: string[]
-  goodPoints: string[]
-  importantClauses: string[]
-  summary: string
+  redFlags: string[];
+  goodPoints: string[];
+  importantClauses: string[];
+  summary: string;
 }
 
 export default function ContractAnalysisPage() {
-  const [step, setStep] = useState<"upload" | "analyzing" | "result">("upload")
-  const [result, setResult] = useState<AnalysisResult | null>(null)
-  const router = useRouter()
+  const [step, setStep] = useState<"upload" | "analyzing" | "result">("upload");
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const router = useRouter();
 
   const handleAnalyze = async () => {
-    setStep("analyzing")
+    setStep("analyzing");
 
     // Simulate API call
     setTimeout(() => {
@@ -48,10 +47,10 @@ export default function ContractAnalysisPage() {
           "Notice Period: 2 weeks required for termination",
           "Sign-on Bonus: $50,000",
         ],
-      })
-      setStep("result")
-    }, 2000)
-  }
+      });
+      setStep("result");
+    }, 2000);
+  };
 
   return (
     <div className="px-4 py-8 max-w-4xl mx-auto">
@@ -66,52 +65,21 @@ export default function ContractAnalysisPage() {
           <div>
             <h1 className="text-3xl font-bold mb-2">Analyze Contract</h1>
             <p className="text-muted-foreground">
-              Upload a job contract or offering letter to analyze for red flags and benefits
+              Upload a job contract or offering letter to analyze for red flags
+              and benefits
             </p>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Upload Document</CardTitle>
-              <CardDescription>PDF, images, or paste text</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="border-2 border-dashed border-border rounded-lg p-8 text-center space-y-4">
-                <Upload className="h-10 w-10 text-muted-foreground mx-auto" />
-                <div>
-                  <p className="font-medium">Drag and drop your file here</p>
-                  <p className="text-sm text-muted-foreground">or click to browse</p>
-                </div>
-                <Button variant="outline">Choose File</Button>
-              </div>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border"></div>
-                </div>
-                <div className="relative flex justify-center">
-                  <span className="bg-card px-2 text-muted-foreground text-sm">Or paste text</span>
-                </div>
-              </div>
-
-              <textarea
-                placeholder="Paste your contract text here..."
-                className="w-full min-h-32 p-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
-                defaultValue="Standard Software Engineer Employment Agreement..."
-              />
-              {/* <UploadPdfComponent/> */}
-              <Button className="w-full" onClick={handleAnalyze}>
-                Analyze Contract
-              </Button>
-            </CardContent>
-          </Card>
+          <UploadPdfComponent />
         </div>
       )}
 
       {step === "analyzing" && (
         <div className="flex flex-col items-center justify-center min-h-96 space-y-4">
           <Loader className="h-8 w-8 text-primary animate-spin" />
-          <p className="text-muted-foreground">Analyzing your contract with AI...</p>
+          <p className="text-muted-foreground">
+            Analyzing your contract with AI...
+          </p>
         </div>
       )}
 
@@ -119,11 +87,11 @@ export default function ContractAnalysisPage() {
         <ContractAnalysisResult
           result={result}
           onReset={() => {
-            setStep("upload")
-            setResult(null)
+            setStep("upload");
+            setResult(null);
           }}
         />
       )}
     </div>
-  )
+  );
 }
