@@ -43,6 +43,11 @@ class ResumeModel {
       { $set: { extractedText } }
     );
   }
+
+  static async deleteById(id: string) {
+    const result = await this.collection().deleteOne({ _id: new ObjectId(id) });
+    return result.deletedCount > 0;
+  }
 }
 
 export default ResumeModel;

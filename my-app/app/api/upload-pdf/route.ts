@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import ResumeModel from "@/db/models/ResumeModel";
 import cloudinary from "@/db/config/cloudinary";
+import { getServerUser } from "@/helpers/auth";
+import { JWTPayload } from "@/types/jwt";
 
 export async function POST(request: NextRequest) {
   try {
+    // Get logged in user
+    const user = (await getServerUser()) as JWTPayload | null;
+    if (!user || !user.userId) {
+      return NextResponse.json(
+        { message: "Unauthorized. Please login first." },
+        { status: 401 }
+      );
+    }
+
+    console.log("👤 User ID:", user.userId);
+
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
@@ -150,9 +163,10 @@ export async function POST(request: NextRequest) {
     // Kirim ke n8n untuk OCR/analysis (skipped - already extracted above)
     console.log("📝 Extracted text length:", extractedText.length);
 
-    // Simpan ke MongoDB
-    console.log("💾 Saving to MongoDB...");
+    // Simpan ke MongoDB dengan userId
+    console.log("💾 Saving to MongoDB with userId:", user.userId);
     const resume = await ResumeModel.create({
+      userId: user.userId,
       fileName: file.name,
       fileUrl: imageUrl,
       cloudinaryPublicId: uploadResult.publicId,
