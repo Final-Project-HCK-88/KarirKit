@@ -18,7 +18,12 @@ import {
   ChevronRight,
   FileText,
   Upload,
+  Briefcase,
+  MapPin,
+  DollarSign,
+  TrendingUp,
 } from "lucide-react";
+import { WizardNavigation } from "@/components/wizard-navigation";
 
 interface HistoryItem {
   _id: string;
@@ -42,14 +47,39 @@ interface PreferenceOption {
   expectedSalary: number;
 }
 
+const wizardSteps = [
+  { id: 1, title: "Basic Info", description: "Job & Location" },
+  { id: 2, title: "Experience", description: "Your Background" },
+  { id: 3, title: "Salary", description: "Current/Expected" },
+  { id: 4, title: "Review", description: "Confirm Details" },
+];
+
 export default function SalaryBenchmarkPage() {
-  const [step, setStep] = useState<"form" | "analyzing">("form");
+  const [mode, setMode] = useState<"select" | "ai" | "form" | null>("select");
+  const [wizardStep, setWizardStep] = useState(1);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [formData, setFormData] = useState({
     jobTitle: "",
     location: "",
     experience: "",
     currentSalary: "",
   });
+  const [displaySalary, setDisplaySalary] = useState("");
+
+  // Format number with dots (10000 -> 10.000)
+  const formatNumberWithDots = (value: string): string => {
+    const numbers = value.replace(/\D/g, "");
+    if (!numbers) return "";
+    return numbers.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+  };
+
+  // Handle salary input change
+  const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    const numbersOnly = inputValue.replace(/\D/g, "");
+    setFormData({ ...formData, currentSalary: numbersOnly });
+    setDisplaySalary(formatNumberWithDots(numbersOnly));
+  };
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [hasCV, setHasCV] = useState(false);
@@ -83,23 +113,18 @@ export default function SalaryBenchmarkPage() {
     fetchHistory();
   }, []);
 
-  // Check if user has CV and load preferences
+  // Check if user has CV
   useEffect(() => {
-    const checkCVAndLoadOptions = async () => {
+    const checkCV = async () => {
       try {
         const response = await fetch("/api/cv");
         const data = await response.json();
         setHasCV(data.hasCV || false);
-
-        // If user has CV, automatically load preference options
-        if (data.hasCV) {
-          await loadPreferenceOptions();
-        }
       } catch (error) {
         console.error("Error checking CV:", error);
       }
     };
-    checkCVAndLoadOptions();
+    checkCV();
   }, []);
 
   const loadPreferenceOptions = async () => {
@@ -130,17 +155,23 @@ export default function SalaryBenchmarkPage() {
   const handleSelectOption = (option: PreferenceOption) => {
     setSelectedOption(option.id);
     // Auto-fill form with selected option
+    const salaryValue = option.expectedSalary?.toString() || "";
     setFormData({
       jobTitle: option.position || "",
       location: option.location || "",
       experience: option.yearsOfExperience?.toString() || "",
-      currentSalary: option.expectedSalary?.toString() || "",
+      currentSalary: salaryValue,
     });
+    setDisplaySalary(formatNumberWithDots(salaryValue));
+
+    // Move to form mode and wizard step 1
+    setMode("form");
+    setWizardStep(1);
 
     // Scroll to form
     setTimeout(() => {
       document
-        .getElementById("salary-form")
+        .getElementById("salary-wizard")
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 100);
   };
@@ -204,13 +235,32 @@ export default function SalaryBenchmarkPage() {
     }
   };
 
+  const handleNextStep = () => {
+    if (wizardStep === 1) {
+      if (!formData.jobTitle || !formData.location) {
+        alert("Please fill in job title and location");
+        return;
+      }
+    } else if (wizardStep === 2) {
+      if (!formData.experience) {
+        alert("Please enter your years of experience");
+        return;
+      }
+    }
+    setWizardStep((prev) => Math.min(prev + 1, wizardSteps.length));
+  };
+
+  const handlePrevStep = () => {
+    setWizardStep((prev) => Math.max(prev - 1, 1));
+  };
+
   const handleAnalyze = async () => {
     if (!formData.jobTitle || !formData.location || !formData.experience) {
       alert("Please fill in all required fields");
       return;
     }
 
-    setStep("analyzing");
+    setIsAnalyzing(true);
 
     try {
       // Call API to create salary benchmark request
@@ -258,19 +308,19 @@ export default function SalaryBenchmarkPage() {
       alert(
         error instanceof Error ? error.message : "Failed to create benchmark"
       );
-      setStep("form");
+      setIsAnalyzing(false);
     }
   };
 
   return (
-    <div className="px-4 py-8 max-w-4xl mx-auto">
+    <div className="px-4 py-8 max-w-5xl mx-auto">
       <Link href="/dashboard">
         <Button variant="ghost" size="sm" className="gap-2 mb-8">
           <ArrowLeft className="h-4 w-4" /> Back to Dashboard
         </Button>
       </Link>
 
-      {step === "form" && (
+      {!isAnalyzing && (
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold mb-2">Salary Benchmark</h1>
@@ -279,67 +329,149 @@ export default function SalaryBenchmarkPage() {
             </p>
           </div>
 
-          {/* History Section */}
-          {loadingHistory ? (
-            <Card>
-              <CardContent className="py-8">
-                <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                  <Loader className="h-4 w-4 animate-spin" />
-                  <span>Loading history...</span>
-                </div>
-              </CardContent>
-            </Card>
-          ) : history.length > 0 ? (
+          {/* Mode Selection */}
+          {mode === "select" && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
-                  Recent Searches
-                </CardTitle>
+                <CardTitle>Choose Your Method</CardTitle>
                 <CardDescription>
-                  Click on a previous search to view its results
+                  Select how you want to get your salary benchmark
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {history.map((item) => (
-                    <Link
-                      key={item._id}
-                      href={`/dashboard/salary-benchmark/${item._id}`}
-                      className="block"
-                    >
-                      <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent hover:border-primary transition-colors cursor-pointer">
-                        <div className="flex-1">
-                          <div className="font-medium">{item.jobTitle}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {item.location} • {item.experienceYear} years
-                            experience • Rp{" "}
-                            {item.currentOrOfferedSallary.toLocaleString(
-                              "id-ID"
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {new Date(item.createdAt).toLocaleDateString(
-                              "id-ID",
-                              {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              }
-                            )}
-                          </div>
-                        </div>
-                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              <CardContent className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* AI Option */}
+                  <button
+                    onClick={() => {
+                      if (!hasCV) {
+                        setMode("form");
+                        alert("Please upload your CV first or use manual form");
+                        return;
+                      }
+                      setMode("ai");
+                      loadPreferenceOptions();
+                    }}
+                    className="p-6 border-2 rounded-lg hover:border-primary hover:bg-accent transition-all text-left group"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
+                        <Upload className="h-8 w-8 text-primary" />
                       </div>
-                    </Link>
-                  ))}
+                      <div className="flex-1">
+                        <h3 className="text-xl font-semibold mb-2">
+                          Use AI from CV
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Let AI analyze your CV and provide personalized career
+                          insights and salary recommendations
+                        </p>
+                        <div className="flex items-center gap-2 text-sm">
+                          {hasCV ? (
+                            <span className="text-green-600 font-medium">
+                              ✓ CV Uploaded
+                            </span>
+                          ) : (
+                            <span className="text-orange-600 font-medium">
+                              ⚠ CV Required
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Manual Form Option */}
+                  <button
+                    onClick={() => setMode("form")}
+                    className="p-6 border-2 rounded-lg hover:border-primary hover:bg-accent transition-all text-left group"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
+                        <FileText className="h-8 w-8 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-semibold mb-2">
+                          Manual Form
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Fill out the form manually with your job details to
+                          get salary benchmarks
+                        </p>
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-blue-600 font-medium">
+                            → Quick & Simple
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
                 </div>
               </CardContent>
             </Card>
-          ) : null}
+          )}
 
-          {/* Career Preference Options */}
-          {loadingOptions && (
+          {/* History Section - Only show in select mode */}
+          {mode === "select" &&
+            (loadingHistory ? (
+              <Card>
+                <CardContent className="py-8">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Loader className="h-4 w-4 animate-spin" />
+                    <span>Loading history...</span>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : history.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Recent Searches
+                  </CardTitle>
+                  <CardDescription>
+                    Click on a previous search to view its results
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {history.map((item) => (
+                      <Link
+                        key={item._id}
+                        href={`/dashboard/salary-benchmark/${item._id}`}
+                        className="block"
+                      >
+                        <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent hover:border-primary transition-colors cursor-pointer">
+                          <div className="flex-1">
+                            <div className="font-medium">{item.jobTitle}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {item.location} • {item.experienceYear} years
+                              experience • Rp{" "}
+                              {item.currentOrOfferedSallary.toLocaleString(
+                                "id-ID"
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {new Date(item.createdAt).toLocaleDateString(
+                                "id-ID",
+                                {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                }
+                              )}
+                            </div>
+                          </div>
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null)}
+
+          {/* Career Preference Options - Only show in AI mode */}
+          {mode === "ai" && loadingOptions && (
             <Card>
               <CardContent className="py-12">
                 <div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
@@ -351,89 +483,190 @@ export default function SalaryBenchmarkPage() {
             </Card>
           )}
 
-          {!loadingOptions && preferenceOptions.length > 0 && (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-2xl font-bold mb-2">
+          {mode === "ai" && !loadingOptions && preferenceOptions.length > 0 && (
+            <div className="space-y-6">
+              {/* Back Button */}
+              <div className="flex justify-start">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMode("select")}
+                  className="gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Method Selection
+                </Button>
+              </div>
+
+              {/* Header Section with Icon */}
+              <div className="text-center max-w-3xl mx-auto space-y-3 py-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+                  <Upload className="h-8 w-8 text-primary" />
+                </div>
+                <h2 className="text-3xl font-bold tracking-tight">
                   Career Insights from Your CV
                 </h2>
-                <p className="text-muted-foreground">
-                  Based on your experience and skills, here are some career
-                  paths you might explore. Click on one to auto-fill the form
-                  below.
+                <p className="text-lg text-muted-foreground">
+                  Based on your experience and skills, here are personalized
+                  career paths.
+                  <br />
+                  <span className="text-sm font-medium text-primary">
+                    Select one to auto-fill the form and get started
+                  </span>
                 </p>
               </div>
-              <div className="grid grid-cols-1 gap-4">
-                {preferenceOptions.map((option) => (
+
+              {/* Options Grid */}
+              <div className="grid grid-cols-1 gap-5">
+                {preferenceOptions.map((option, index) => (
                   <Card
                     key={option.id}
-                    className={`cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] ${
+                    className={`cursor-pointer transition-all duration-300 hover:shadow-xl group relative overflow-hidden ${
                       selectedOption === option.id
-                        ? "ring-2 ring-primary shadow-lg bg-primary/5"
-                        : "hover:border-primary"
+                        ? "ring-2 ring-primary shadow-xl bg-linear-to-br from-primary/5 to-primary/10 scale-[1.02]"
+                        : "hover:border-primary hover:scale-[1.01]"
                     }`}
                     onClick={() => handleSelectOption(option)}
                   >
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-xl mb-2 flex items-center gap-2">
-                            {option.title}
+                    {/* Option Number Badge */}
+                    <div className="absolute top-4 left-4 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                      {index + 1}
+                    </div>
+
+                    <CardHeader className="pb-3 pt-6 pl-16">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <CardTitle className="text-xl font-bold">
+                              {option.title}
+                            </CardTitle>
                             {selectedOption === option.id && (
-                              <span className="text-xs bg-primary text-white px-2 py-1 rounded-full">
+                              <span className="inline-flex items-center gap-1 text-xs bg-primary text-white px-3 py-1 rounded-full font-medium">
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
                                 Selected
                               </span>
                             )}
-                          </CardTitle>
-                          <CardDescription className="text-base">
+                          </div>
+                          <CardDescription className="text-base leading-relaxed">
                             {option.description}
                           </CardDescription>
                         </div>
-                        <ChevronRight
-                          className={`h-5 w-5 transition-transform ${
-                            selectedOption === option.id ? "rotate-90" : ""
+                        <div
+                          className={`shrink-0 transition-all duration-300 ${
+                            selectedOption === option.id
+                              ? "rotate-90 text-primary"
+                              : "text-muted-foreground group-hover:translate-x-1 group-hover:text-primary"
                           }`}
-                        />
+                        >
+                          <ChevronRight className="h-6 w-6" />
+                        </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">
-                            Position:
-                          </span>
-                          <p className="font-medium">{option.position}</p>
+
+                    <CardContent className="space-y-4 pt-4">
+                      {/* Info Grid */}
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                        <div className="flex items-start gap-2">
+                          <Briefcase className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs text-muted-foreground">
+                              Position
+                            </p>
+                            <p className="font-semibold text-sm truncate">
+                              {option.position}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-muted-foreground">
-                            Experience:
-                          </span>
-                          <p className="font-medium">
-                            {option.yearsOfExperience} years (
-                            {option.experienceLevel})
-                          </p>
+                        <div className="flex items-start gap-2">
+                          <TrendingUp className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs text-muted-foreground">
+                              Experience
+                            </p>
+                            <p className="font-semibold text-sm">
+                              {option.yearsOfExperience} years (
+                              {option.experienceLevel})
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-muted-foreground">
-                            Location:
-                          </span>
-                          <p className="font-medium">{option.location}</p>
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs text-muted-foreground">
+                              Location
+                            </p>
+                            <p className="font-semibold text-sm truncate">
+                              {option.location}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-muted-foreground">
-                            Expected Salary:
-                          </span>
-                          <p className="font-medium">
-                            Rp {option.expectedSalary}jt
-                          </p>
+                        <div className="flex items-start gap-2">
+                          <DollarSign className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs text-muted-foreground">
+                              Expected Salary
+                            </p>
+                            <p className="font-semibold text-sm text-green-600">
+                              Rp {option.expectedSalary}jt
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <div className="mt-4">
-                        <span className="text-muted-foreground text-sm">
-                          Key Skills:
-                        </span>
-                        <p className="text-sm mt-1">{option.skills}</p>
+
+                      {/* Skills Section */}
+                      <div className="pt-3 border-t">
+                        <div className="flex items-center gap-2 mb-2">
+                          <svg
+                            className="h-4 w-4 text-primary"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Key Skills
+                          </span>
+                        </div>
+                        <p className="text-sm leading-relaxed text-gray-700">
+                          {option.skills}
+                        </p>
                       </div>
+
+                      {/* CTA Hint */}
+                      {selectedOption !== option.id && (
+                        <div className="pt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <p className="text-xs text-primary font-medium flex items-center gap-1">
+                            <svg
+                              className="w-3 h-3"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            Click to select and continue
+                          </p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -441,130 +674,396 @@ export default function SalaryBenchmarkPage() {
             </div>
           )}
 
-          <Card id="salary-form">
-            <CardHeader>
-              <CardTitle>Salary Information</CardTitle>
-              <CardDescription>
-                {preferenceOptions.length > 0
-                  ? "Review and adjust the information below, or enter your own details"
-                  : "Help us calculate the right market range for you"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* CV Upload Section */}
-              {!hasCV && (
-                <div className="flex items-center justify-between p-4 bg-accent/50 rounded-lg border-2 border-dashed">
-                  <div className="flex items-center gap-3">
-                    <Upload className="h-5 w-5 text-primary" />
-                    <div>
-                      <p className="font-medium text-sm">Upload Your CV</p>
-                      <p className="text-xs text-muted-foreground">
-                        Get personalized career insights and auto-fill forms
-                      </p>
+          {/* Wizard Form - Only show in form mode */}
+          {mode === "form" && (
+            <Card id="salary-wizard">
+              <CardHeader>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <CardTitle>Let's Get Your Salary Benchmark</CardTitle>
+                    <CardDescription>
+                      Follow these simple steps to get personalized salary
+                      insights
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setMode("select")}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Change Method
+                  </Button>
+                </div>
+                <WizardNavigation
+                  steps={wizardSteps}
+                  currentStep={wizardStep}
+                />
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* CV Upload Section */}
+                {!hasCV && wizardStep === 1 && (
+                  <div className="mb-6 p-4 bg-linear-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                    <div className="flex items-start gap-3">
+                      <Upload className="h-5 w-5 text-primary mt-1" />
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm mb-1">
+                          💡 Pro Tip: Upload Your CV
+                        </p>
+                        <p className="text-xs text-muted-foreground mb-3">
+                          Get AI-powered career insights and auto-fill this form
+                        </p>
+                        <div className="flex gap-2">
+                          <Input
+                            id="cv-upload-salary"
+                            type="file"
+                            accept="application/pdf"
+                            onChange={handleCVFileChange}
+                            className="flex-1 text-xs h-9"
+                          />
+                          <Button
+                            size="sm"
+                            onClick={handleUploadCV}
+                            disabled={!cvFile || isUploadingCV}
+                          >
+                            {isUploadingCV ? (
+                              <>
+                                <Loader className="h-4 w-4 mr-2 animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Upload
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex gap-2 items-center">
-                    <Input
-                      id="cv-upload-salary"
-                      type="file"
-                      accept="application/pdf"
-                      onChange={handleCVFileChange}
-                      className="max-w-[200px] text-xs h-8"
-                    />
-                    <Button
-                      size="sm"
-                      onClick={handleUploadCV}
-                      disabled={!cvFile || isUploadingCV}
-                    >
-                      {isUploadingCV ? (
-                        <>
-                          <Loader className="h-4 w-4 mr-2 animate-spin" />
-                          Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload
-                        </>
-                      )}
-                    </Button>
+                )}
+
+                {/* Step 1: Basic Info */}
+                {wizardStep === 1 && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-3 bg-primary/10 rounded-lg">
+                        <Briefcase className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold">
+                          Job Title & Location
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Tell us about the position you're interested in
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <Briefcase className="h-4 w-4 text-primary" />
+                          Job Title *
+                        </label>
+                        <Input
+                          placeholder="e.g., Senior Software Engineer"
+                          value={formData.jobTitle}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              jobTitle: e.target.value,
+                            })
+                          }
+                          className="h-12 text-base"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Be specific for better results
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-primary" />
+                          Location *
+                        </label>
+                        <Input
+                          placeholder="e.g., Jakarta, Indonesia"
+                          value={formData.location}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              location: e.target.value,
+                            })
+                          }
+                          className="h-12 text-base"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          City and country for accurate market data
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Job Title *</label>
-                  <Input
-                    placeholder="e.g., Senior Software Engineer"
-                    value={formData.jobTitle}
-                    onChange={(e) =>
-                      setFormData({ ...formData, jobTitle: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Location *</label>
-                  <Input
-                    placeholder="e.g., San Francisco, CA"
-                    value={formData.location}
-                    onChange={(e) =>
-                      setFormData({ ...formData, location: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
+                {/* Step 2: Experience */}
+                {wizardStep === 2 && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-3 bg-primary/10 rounded-lg">
+                        <TrendingUp className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold">
+                          Your Experience Level
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Help us understand your career stage
+                        </p>
+                      </div>
+                    </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    Years of Experience *
-                  </label>
-                  <Input
-                    type="number"
-                    placeholder="e.g., 5"
-                    value={formData.experience}
-                    onChange={(e) =>
-                      setFormData({ ...formData, experience: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    Current/Offered Salary{" "}
-                    <span className="text-xs text-gray-500 font-normal">
-                      (dapat disesuaikan)
-                    </span>
-                  </label>
-                  <Input
-                    type="number"
-                    placeholder="e.g., 150000"
-                    value={formData.currentSalary}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        currentSalary: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-              </div>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-primary" />
+                          Years of Experience *
+                        </label>
+                        <Input
+                          type="number"
+                          placeholder="e.g., 5"
+                          value={formData.experience}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              experience: e.target.value,
+                            })
+                          }
+                          className="h-12 text-base"
+                          min="0"
+                          max="50"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Include all relevant work experience
+                        </p>
+                      </div>
 
-              <Button className="w-full" onClick={handleAnalyze}>
-                Get Benchmark
-              </Button>
-            </CardContent>
-          </Card>
+                      {/* Experience Level Guide */}
+                      <div className="p-4 bg-accent/50 rounded-lg">
+                        <p className="text-xs font-medium mb-2">
+                          Experience Level Guide:
+                        </p>
+                        <ul className="text-xs text-muted-foreground space-y-1">
+                          <li>• 0-2 years: Junior/Entry Level</li>
+                          <li>• 3-5 years: Mid-Level</li>
+                          <li>• 6-10 years: Senior Level</li>
+                          <li>• 10+ years: Lead/Principal/Staff</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Salary */}
+                {wizardStep === 3 && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-3 bg-primary/10 rounded-lg">
+                        <DollarSign className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold">
+                          Salary Information
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          This helps us provide better benchmarking (optional)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-primary" />
+                          Current or Expected Salary (per month)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                            Rp
+                          </span>
+                          <Input
+                            type="text"
+                            placeholder="15.000.000"
+                            value={displaySalary}
+                            onChange={handleSalaryChange}
+                            className="h-12 text-base pl-10"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Optional: Enter your current or expected monthly
+                          salary
+                        </p>
+                      </div>
+
+                      {formData.currentSalary && (
+                        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                          <p className="text-sm font-medium text-green-900">
+                            💰 Formatted:{" "}
+                            <span className="font-bold">
+                              Rp{" "}
+                              {Number(formData.currentSalary).toLocaleString(
+                                "id-ID"
+                              )}
+                            </span>
+                          </p>
+                          <p className="text-xs text-green-700 mt-1">
+                            This will be compared with market benchmarks
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 4: Review */}
+                {wizardStep === 4 && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-3 bg-primary/10 rounded-lg">
+                        <FileText className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold">
+                          Review Your Information
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Make sure everything looks correct before submitting
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4">
+                      <div className="p-4 bg-accent/30 rounded-lg border">
+                        <div className="flex items-start gap-3">
+                          <Briefcase className="h-5 w-5 text-primary mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground mb-1">
+                              Job Title
+                            </p>
+                            <p className="font-semibold">{formData.jobTitle}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-accent/30 rounded-lg border">
+                        <div className="flex items-start gap-3">
+                          <MapPin className="h-5 w-5 text-primary mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground mb-1">
+                              Location
+                            </p>
+                            <p className="font-semibold">{formData.location}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-accent/30 rounded-lg border">
+                        <div className="flex items-start gap-3">
+                          <TrendingUp className="h-5 w-5 text-primary mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground mb-1">
+                              Years of Experience
+                            </p>
+                            <p className="font-semibold">
+                              {formData.experience} years
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-accent/30 rounded-lg border">
+                        <div className="flex items-start gap-3">
+                          <DollarSign className="h-5 w-5 text-primary mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground mb-1">
+                              Current/Expected Salary
+                            </p>
+                            <p className="font-semibold">
+                              {formData.currentSalary
+                                ? `Rp ${Number(
+                                    formData.currentSalary
+                                  ).toLocaleString("id-ID")}`
+                                : "Not specified"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Navigation Buttons */}
+                <div className="flex gap-3 pt-4 border-t">
+                  {wizardStep > 1 && (
+                    <Button
+                      variant="outline"
+                      onClick={handlePrevStep}
+                      className="flex-1"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Previous
+                    </Button>
+                  )}
+
+                  {wizardStep < wizardSteps.length ? (
+                    <Button
+                      onClick={handleNextStep}
+                      className={wizardStep === 1 ? "w-full" : "flex-1"}
+                    >
+                      Next Step
+                      <ChevronRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  ) : (
+                    <Button onClick={handleAnalyze} className="flex-1">
+                      Get Benchmark
+                      <TrendingUp className="h-4 w-4 ml-2" />
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
-      {step === "analyzing" && (
-        <div className="flex flex-col items-center justify-center min-h-96 space-y-4">
-          <Loader className="h-8 w-8 text-primary animate-spin" />
-          <p className="text-muted-foreground">
-            Analyzing salary market data...
-          </p>
-        </div>
+      {isAnalyzing && (
+        <Card>
+          <CardContent className="py-16">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <Loader className="h-12 w-12 text-primary animate-spin" />
+              <div className="text-center">
+                <p className="text-lg font-semibold mb-2">
+                  Analyzing Salary Market Data
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  We're gathering insights from thousands of data points...
+                </p>
+              </div>
+              <div className="flex gap-2 mt-4">
+                <div className="h-2 w-2 bg-primary rounded-full animate-bounce" />
+                <div
+                  className="h-2 w-2 bg-primary rounded-full animate-bounce"
+                  style={{ animationDelay: "0.1s" }}
+                />
+                <div
+                  className="h-2 w-2 bg-primary rounded-full animate-bounce"
+                  style={{ animationDelay: "0.2s" }}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

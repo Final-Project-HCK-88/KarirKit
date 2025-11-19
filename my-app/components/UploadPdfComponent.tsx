@@ -9,7 +9,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Upload, FileText, Download, Eye, Loader2, AlertCircle, CheckCircle2, FileCheck, Sparkles } from "lucide-react";
+import {
+  Upload,
+  FileText,
+  Download,
+  Eye,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  FileCheck,
+  Sparkles,
+} from "lucide-react";
 
 interface UploadResult {
   url: string;
@@ -338,7 +348,7 @@ export default function UploadPdfComponent() {
                     ) : (
                       <>
                         <FileCheck className="mr-2 h-4 w-4" />
-                        Analyze CV
+                        Analyze Contract
                       </>
                     )}
                   </Button>
@@ -397,7 +407,9 @@ export default function UploadPdfComponent() {
             {/* Summary */}
             <div>
               <h4 className="font-semibold mb-2">Summary:</h4>
-              <p className="text-sm text-muted-foreground">{analysis.summary}</p>
+              <p className="text-sm text-muted-foreground">
+                {analysis.summary}
+              </p>
             </div>
 
             {/* Contract Info */}
@@ -462,7 +474,9 @@ export default function UploadPdfComponent() {
             {analysis.workingConditions && (
               <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900">
                 <CardHeader>
-                  <CardTitle className="text-base">Working Conditions</CardTitle>
+                  <CardTitle className="text-base">
+                    Working Conditions
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
                   <p>
