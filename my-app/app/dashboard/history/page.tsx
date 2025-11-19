@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, FileText, Trash2, Eye, CheckCircle } from "lucide-react";
+import Swal from "sweetalert2";
 
 interface HistoryItem {
   id: string;
@@ -69,12 +70,18 @@ export default function HistoryPage() {
   };
 
   const handleDelete = async (id: string, fileName: string) => {
-    if (
-      !confirm(
-        `Are you sure you want to delete "${fileName}"?\n\nThis will also delete any associated analysis results.`
-      )
-    )
-      return;
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      html: `You want to delete <strong>"${fileName}"</strong>?<br><br>This will also delete any associated analysis results.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#0c1b8a",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
       const response = await fetch(`/api/analyze-cv?resumeId=${id}`, {
@@ -88,14 +95,24 @@ export default function HistoryPage() {
 
       // Refresh history after successful deletion
       await fetchHistory();
-      alert("File and associated analysis deleted successfully!");
+
+      Swal.fire({
+        title: "Deleted!",
+        text: "File and associated analysis deleted successfully!",
+        icon: "success",
+        confirmButtonColor: "#0c1b8a",
+      });
     } catch (err) {
       console.error("Error deleting file:", err);
-      alert(
-        err instanceof Error
+
+      Swal.fire({
+        title: "Error!",
+        text: err instanceof Error
           ? err.message
-          : "Failed to delete file. Please try again."
-      );
+          : "Failed to delete file. Please try again.",
+        icon: "error",
+        confirmButtonColor: "#0c1b8a",
+      });
     }
   };
 

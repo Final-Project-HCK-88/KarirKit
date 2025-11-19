@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +26,7 @@ import {
   Building2,
 } from "lucide-react";
 import { WizardNavigation } from "@/components/wizard-navigation";
+import Swal from "sweetalert2";
 
 interface HistoryItem {
   _id: string;
@@ -56,9 +58,11 @@ const wizardSteps = [
 ];
 
 export default function JobMatchingPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<"select" | "ai" | "form" | null>("select");
   const [wizardStep, setWizardStep] = useState(1);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [skipCVUpload, setSkipCVUpload] = useState(false);
   const [formData, setFormData] = useState({
     location: "",
     industry: "",
@@ -157,15 +161,18 @@ export default function JobMatchingPage() {
   const handleSelectOption = (option: PreferenceOption) => {
     setSelectedOption(option.id);
     // Auto-fill form with selected option
-    const salaryValue = option.expectedSalary?.toString() || "";
+    // Convert salary from millions to full number (15 -> 15000000)
+    const salaryInFull = option.expectedSalary
+      ? (option.expectedSalary * 1000000).toString()
+      : "";
     setFormData({
       position: option.position || "",
       location: option.location || "",
       industry: option.industry || "",
-      expectedSalary: salaryValue,
+      expectedSalary: salaryInFull,
       skill: option.skills || "",
     });
-    setDisplaySalary(formatNumberWithDots(salaryValue));
+    setDisplaySalary(formatNumberWithDots(salaryInFull));
 
     // Move to form mode and wizard step 1
     setMode("form");
@@ -183,11 +190,21 @@ export default function JobMatchingPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.type !== "application/pdf") {
-        alert("Please upload a PDF file");
+        Swal.fire({
+          title: "Invalid File Type",
+          text: "Please upload a PDF file",
+          icon: "error",
+          confirmButtonColor: "#0c1b8a",
+        });
         return;
       }
       if (file.size > 10 * 1024 * 1024) {
-        alert("File size must be less than 10MB");
+        Swal.fire({
+          title: "File Too Large",
+          text: "File size must be less than 10MB",
+          icon: "error",
+          confirmButtonColor: "#0c1b8a",
+        });
         return;
       }
       setCvFile(file);
@@ -220,7 +237,15 @@ export default function JobMatchingPage() {
       // Update state
       setHasCV(true);
       setCvFile(null);
-      alert("CV uploaded successfully! Loading career insights...");
+
+      Swal.fire({
+        title: "Success!",
+        text: "CV uploaded successfully! Loading career insights...",
+        icon: "success",
+        confirmButtonColor: "#0c1b8a",
+        timer: 2000,
+        showConfirmButton: false,
+      });
 
       // Load preference options after successful upload
       await loadPreferenceOptions();
@@ -232,7 +257,12 @@ export default function JobMatchingPage() {
       if (fileInput) fileInput.value = "";
     } catch (error) {
       console.error("Error uploading CV:", error);
-      alert(error instanceof Error ? error.message : "Failed to upload CV");
+      Swal.fire({
+        title: "Upload Failed",
+        text: error instanceof Error ? error.message : "Failed to upload CV",
+        icon: "error",
+        confirmButtonColor: "#0c1b8a",
+      });
     } finally {
       setIsUploadingCV(false);
     }
@@ -241,12 +271,22 @@ export default function JobMatchingPage() {
   const handleNextStep = () => {
     if (wizardStep === 1) {
       if (!formData.position || !formData.location) {
-        alert("Please fill in position and location");
+        Swal.fire({
+          title: "Incomplete Information",
+          text: "Please fill in position and location",
+          icon: "warning",
+          confirmButtonColor: "#0c1b8a",
+        });
         return;
       }
     } else if (wizardStep === 2) {
       if (!formData.industry) {
-        alert("Please enter the industry");
+        Swal.fire({
+          title: "Incomplete Information",
+          text: "Please enter the industry",
+          icon: "warning",
+          confirmButtonColor: "#0c1b8a",
+        });
         return;
       }
     }
@@ -259,7 +299,12 @@ export default function JobMatchingPage() {
 
   const handleAnalyze = async () => {
     if (!formData.location || !formData.industry || !formData.position) {
-      alert("Please fill in all required fields");
+      Swal.fire({
+        title: "Incomplete Information",
+        text: "Please fill in all required fields",
+        icon: "warning",
+        confirmButtonColor: "#0c1b8a",
+      });
       return;
     }
 
@@ -311,9 +356,12 @@ export default function JobMatchingPage() {
       window.location.href = `/dashboard/job-matching/${preferencesId}`;
     } catch (error) {
       console.error("Error creating job matching:", error);
-      alert(
-        error instanceof Error ? error.message : "Failed to create job matching"
-      );
+      Swal.fire({
+        title: "Error!",
+        text: error instanceof Error ? error.message : "Failed to create job matching",
+        icon: "error",
+        confirmButtonColor: "#0c1b8a",
+      });
       setIsAnalyzing(false);
     }
   };
@@ -348,10 +396,25 @@ export default function JobMatchingPage() {
                 <div className="grid md:grid-cols-2 gap-4">
                   {/* AI Option */}
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (!hasCV) {
-                        setMode("form");
-                        alert("Please upload your CV first or use manual form");
+                        const result = await Swal.fire({
+                          title: "CV Required",
+                          text: "Please upload your CV first or use manual form",
+                          icon: "info",
+                          confirmButtonColor: "#0c1b8a",
+                          showCancelButton: true,
+                          confirmButtonText: "Go to Profile",
+                          cancelButtonText: "Use Manual Form",
+                        });
+
+                        if (result.isConfirmed) {
+                          router.push("/dashboard/profile");
+                        } else if (result.isDismissed) {
+                          // User chose "Use Manual Form"
+                          setSkipCVUpload(true);
+                          setMode("form");
+                        }
                         return;
                       }
                       setMode("ai");
@@ -614,7 +677,7 @@ export default function JobMatchingPage() {
                               Expected Salary
                             </p>
                             <p className="font-semibold text-sm text-green-600">
-                              Rp {option.expectedSalary}jt
+                              Rp {(option.expectedSalary * 1000000).toLocaleString('id-ID')}
                             </p>
                           </div>
                         </div>
@@ -687,7 +750,7 @@ export default function JobMatchingPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* CV Upload Section */}
-                {!hasCV && wizardStep === 1 && (
+                {!hasCV && !skipCVUpload && wizardStep === 1 && (
                   <div className="mb-6 p-4 bg-linear-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                     <div className="flex items-start gap-3">
                       <Upload className="h-5 w-5 text-primary mt-1" />
@@ -902,20 +965,6 @@ export default function JobMatchingPage() {
                           Optional: Your expected monthly salary
                         </p>
                       </div>
-
-                      {formData.expectedSalary && (
-                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                          <p className="text-sm text-green-900">
-                            💰 Formatted:{" "}
-                            <span className="font-bold">
-                              Rp{" "}
-                              {Number(formData.expectedSalary).toLocaleString(
-                                "id-ID"
-                              )}
-                            </span>
-                          </p>
-                        </div>
-                      )}
 
                       <div className="space-y-2">
                         <label className="text-sm font-medium flex items-center gap-2">

@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Image from "next/image";
+import Swal from "sweetalert2";
 
 interface UserCV {
   _id: string;
@@ -159,7 +160,18 @@ export default function ProfilePage() {
   };
 
   const handleDeleteCV = async () => {
-    if (!confirm("Are you sure you want to delete your CV?")) return;
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "You want to delete your CV?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#0c1b8a",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
       const response = await fetch("/api/cv", {
@@ -172,11 +184,21 @@ export default function ProfilePage() {
 
       setUserCV(null);
       setCvFile(null);
+
+      Swal.fire({
+        title: "Deleted!",
+        text: "CV deleted successfully!",
+        icon: "success",
+        confirmButtonColor: "#0c1b8a",
+      });
     } catch (error) {
       console.error("Error deleting CV:", error);
-      setCvError(
-        error instanceof Error ? error.message : "Failed to delete CV"
-      );
+      Swal.fire({
+        title: "Error!",
+        text: error instanceof Error ? error.message : "Failed to delete CV",
+        icon: "error",
+        confirmButtonColor: "#0c1b8a",
+      });
     }
   };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { WizardNavigation } from "@/components/wizard-navigation";
+import Swal from "sweetalert2";
 
 interface HistoryItem {
   _id: string;
@@ -55,9 +57,11 @@ const wizardSteps = [
 ];
 
 export default function SalaryBenchmarkPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<"select" | "ai" | "form" | null>("select");
   const [wizardStep, setWizardStep] = useState(1);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [skipCVUpload, setSkipCVUpload] = useState(false);
   const [formData, setFormData] = useState({
     jobTitle: "",
     location: "",
@@ -155,14 +159,17 @@ export default function SalaryBenchmarkPage() {
   const handleSelectOption = (option: PreferenceOption) => {
     setSelectedOption(option.id);
     // Auto-fill form with selected option
-    const salaryValue = option.expectedSalary?.toString() || "";
+    // Convert salary from millions to full number (15 -> 15000000)
+    const salaryInFull = option.expectedSalary
+      ? (option.expectedSalary * 1000000).toString()
+      : "";
     setFormData({
       jobTitle: option.position || "",
       location: option.location || "",
       experience: option.yearsOfExperience?.toString() || "",
-      currentSalary: salaryValue,
+      currentSalary: salaryInFull,
     });
-    setDisplaySalary(formatNumberWithDots(salaryValue));
+    setDisplaySalary(formatNumberWithDots(salaryInFull));
 
     // Move to form mode and wizard step 1
     setMode("form");
@@ -180,11 +187,21 @@ export default function SalaryBenchmarkPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.type !== "application/pdf") {
-        alert("Please upload a PDF file");
+        Swal.fire({
+          title: "Invalid File Type",
+          text: "Please upload a PDF file",
+          icon: "error",
+          confirmButtonColor: "#0c1b8a",
+        });
         return;
       }
       if (file.size > 10 * 1024 * 1024) {
-        alert("File size must be less than 10MB");
+        Swal.fire({
+          title: "File Too Large",
+          text: "File size must be less than 10MB",
+          icon: "error",
+          confirmButtonColor: "#0c1b8a",
+        });
         return;
       }
       setCvFile(file);
@@ -217,7 +234,15 @@ export default function SalaryBenchmarkPage() {
       // Update state
       setHasCV(true);
       setCvFile(null);
-      alert("CV uploaded successfully! Loading career insights...");
+
+      Swal.fire({
+        title: "Success!",
+        text: "CV uploaded successfully! Loading career insights...",
+        icon: "success",
+        confirmButtonColor: "#0c1b8a",
+        timer: 2000,
+        showConfirmButton: false,
+      });
 
       // Load preference options after successful upload
       await loadPreferenceOptions();
@@ -229,7 +254,12 @@ export default function SalaryBenchmarkPage() {
       if (fileInput) fileInput.value = "";
     } catch (error) {
       console.error("Error uploading CV:", error);
-      alert(error instanceof Error ? error.message : "Failed to upload CV");
+      Swal.fire({
+        title: "Upload Failed",
+        text: error instanceof Error ? error.message : "Failed to upload CV",
+        icon: "error",
+        confirmButtonColor: "#0c1b8a",
+      });
     } finally {
       setIsUploadingCV(false);
     }
@@ -238,12 +268,22 @@ export default function SalaryBenchmarkPage() {
   const handleNextStep = () => {
     if (wizardStep === 1) {
       if (!formData.jobTitle || !formData.location) {
-        alert("Please fill in job title and location");
+        Swal.fire({
+          title: "Incomplete Information",
+          text: "Please fill in job title and location",
+          icon: "warning",
+          confirmButtonColor: "#0c1b8a",
+        });
         return;
       }
     } else if (wizardStep === 2) {
       if (!formData.experience) {
-        alert("Please enter your years of experience");
+        Swal.fire({
+          title: "Incomplete Information",
+          text: "Please enter your years of experience",
+          icon: "warning",
+          confirmButtonColor: "#0c1b8a",
+        });
         return;
       }
     }
@@ -256,7 +296,12 @@ export default function SalaryBenchmarkPage() {
 
   const handleAnalyze = async () => {
     if (!formData.jobTitle || !formData.location || !formData.experience) {
-      alert("Please fill in all required fields");
+      Swal.fire({
+        title: "Incomplete Information",
+        text: "Please fill in all required fields",
+        icon: "warning",
+        confirmButtonColor: "#0c1b8a",
+      });
       return;
     }
 
@@ -305,9 +350,12 @@ export default function SalaryBenchmarkPage() {
       window.location.href = `/dashboard/salary-benchmark/${requestId}`;
     } catch (error) {
       console.error("Error creating benchmark:", error);
-      alert(
-        error instanceof Error ? error.message : "Failed to create benchmark"
-      );
+      Swal.fire({
+        title: "Error!",
+        text: error instanceof Error ? error.message : "Failed to create benchmark",
+        icon: "error",
+        confirmButtonColor: "#0c1b8a",
+      });
       setIsAnalyzing(false);
     }
   };
@@ -342,10 +390,25 @@ export default function SalaryBenchmarkPage() {
                 <div className="grid md:grid-cols-2 gap-4">
                   {/* AI Option */}
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (!hasCV) {
-                        setMode("form");
-                        alert("Please upload your CV first or use manual form");
+                        const result = await Swal.fire({
+                          title: "CV Required",
+                          text: "Please upload your CV first or use manual form",
+                          icon: "info",
+                          confirmButtonColor: "#0c1b8a",
+                          showCancelButton: true,
+                          confirmButtonText: "Go to Profile",
+                          cancelButtonText: "Use Manual Form",
+                        });
+
+                        if (result.isConfirmed) {
+                          router.push("/dashboard/profile");
+                        } else if (result.isDismissed) {
+                          // User chose "Use Manual Form"
+                          setSkipCVUpload(true);
+                          setMode("form");
+                        }
                         return;
                       }
                       setMode("ai");
@@ -617,7 +680,7 @@ export default function SalaryBenchmarkPage() {
                               Expected Salary
                             </p>
                             <p className="font-semibold text-sm text-green-600">
-                              Rp {option.expectedSalary}jt
+                              Rp {(option.expectedSalary * 1000000).toLocaleString('id-ID')}
                             </p>
                           </div>
                         </div>
@@ -702,7 +765,7 @@ export default function SalaryBenchmarkPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* CV Upload Section */}
-                {!hasCV && wizardStep === 1 && (
+                {!hasCV && !skipCVUpload && wizardStep === 1 && (
                   <div className="mb-6 p-4 bg-linear-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                     <div className="flex items-start gap-3">
                       <Upload className="h-5 w-5 text-primary mt-1" />
@@ -889,7 +952,7 @@ export default function SalaryBenchmarkPage() {
                           Current or Expected Salary (per month)
                         </label>
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
                             Rp
                           </span>
                           <Input
@@ -897,31 +960,13 @@ export default function SalaryBenchmarkPage() {
                             placeholder="15.000.000"
                             value={displaySalary}
                             onChange={handleSalaryChange}
-                            className="h-12 text-base pl-10"
+                            className="h-12 text-base pl-10 font-medium"
                           />
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Optional: Enter your current or expected monthly
-                          salary
+                          Optional: Enter your current or expected monthly salary (e.g., 15.000.000)
                         </p>
                       </div>
-
-                      {formData.currentSalary && (
-                        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                          <p className="text-sm font-medium text-green-900">
-                            💰 Formatted:{" "}
-                            <span className="font-bold">
-                              Rp{" "}
-                              {Number(formData.currentSalary).toLocaleString(
-                                "id-ID"
-                              )}
-                            </span>
-                          </p>
-                          <p className="text-xs text-green-700 mt-1">
-                            This will be compared with market benchmarks
-                          </p>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}

@@ -96,82 +96,80 @@ export default function DashboardPage() {
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-8">
-      {/* Hero Section with Image */}
-      <div className="grid lg:grid-cols-2 gap-8 items-center mb-16">
-        {/* Left Content */}
-        <div>
-          <div className="inline-flex items-center space-x-2 bg-blue-50 border border-blue-100 rounded-full px-4 py-2 mb-4">
-            <span className="text-sm font-medium text-[#0c1b8a]">
-              ✨ Welcome back!
-            </span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 leading-tight">
-            Hello, {user?.fullname || "aflah"}!
-          </h1>
-          <p className="text-xl text-gray-600">
-            Ready to take your career to nenext level?
-          </p>
+      {/* Hero Section */}
+      <div className="mb-16">
+        <div className="inline-flex items-center space-x-2 bg-blue-50 border border-blue-100 rounded-full px-4 py-2 mb-4">
+          <span className="text-sm font-medium text-[#0c1b8a]">
+            ✨ Welcome back!
+          </span>
         </div>
-
-        {/* Right Image - Professional illustration */}
-        <div className="hidden lg:block relative">
-          <div className="relative w-full h-[500px]">
-            <Image
-              src="/illustration-dashboard.svg"
-              alt="Professional working illustration"
-              fill
-              className="object-contain"
-              priority
-              unoptimized
-            />
-          </div>
-        </div>
+        <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-4 leading-tight">
+          Hello, {user?.fullname}!
+        </h1>
+        <p className="text-xl text-gray-600">
+          Ready to take your career to next level?
+        </p>
       </div>
 
-      {/* Feature Cards - Clean & Modern */}
-      <div className="grid md:grid-cols-3 gap-6 mb-16">
-        {features.map((feature) => {
-          const Icon = feature.icon;
-          return (
-            <Link key={feature.title} href={feature.href}>
-              <Card className="group h-full hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 bg-white rounded-3xl">
-                <CardHeader className="pb-4 space-y-4">
-                  <div
-                    className={`w-16 h-16 rounded-2xl bg-linear-to-br ${feature.color} flex items-center justify-center text-white shadow-md`}
-                  >
-                    <Icon className="h-7 w-7" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl font-bold text-gray-900 mb-2">
-                      {feature.title}
-                    </CardTitle>
-                    <CardDescription className="text-gray-600 text-sm leading-relaxed">
-                      {feature.description}
-                    </CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <Button
-                    variant="link"
-                    className="gap-2 text-[#0c1b8a] hover:text-blue-700 font-semibold p-0 h-auto"
-                  >
-                    Get Started{" "}
-                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
+      {/* Feature Cards with Background Image - Overlapping */}
+      <div className="relative mb-16 overflow-visible" style={{ minHeight: '550px' }}>
+        {/* Professional Image - Background positioned on the right and top */}
+        <div className="hidden lg:block absolute right-0 top-[-80px] w-[550px] h-[650px] rounded-3xl overflow-hidden z-0 shadow-lg">
+          <Image
+            src="/man.jpg"
+            alt="Professional working"
+            fill
+            className="object-cover object-center scale-x-[-1]"
+            priority
+            unoptimized
+          />
+        </div>
+
+        {/* Feature Cards - positioned on top, max width to leave space for image */}
+        <div className="grid md:grid-cols-3 gap-8 relative z-10 lg:max-w-[70%]">
+          {features.map((feature) => {
+            const Icon = feature.icon;
+            return (
+              <Link key={feature.title} href={feature.href}>
+                <Card className="group h-full hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-white rounded-3xl p-10 shadow-lg flex flex-col">
+                  <CardHeader className="p-0 space-y-6 flex-grow">
+                    <div
+                      className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center text-white`}
+                    >
+                      <Icon className="h-8 w-8" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl font-bold text-gray-900 mb-3">
+                        {feature.title}
+                      </CardTitle>
+                      <CardDescription className="text-gray-600 text-base leading-relaxed">
+                        {feature.description}
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0 pt-8">
+                    <Button
+                      variant="link"
+                      className="gap-2 text-[#0c1b8a] hover:text-blue-700 font-bold p-0 h-auto text-base"
+                    >
+                      Get Started{" "}
+                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
       {/* Bottom Section - Recent Activity & Profile */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Recent Activity Card */}
-        <Card className="border border-gray-100 shadow-md rounded-3xl bg-white">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-900">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+        <Card className="border-0 shadow-sm rounded-2xl bg-white">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-bold text-gray-900">
+              <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
                 <History className="h-4 w-4 text-[#0c1b8a]" />
               </div>
               Recent Activity
@@ -189,10 +187,16 @@ export default function DashboardPage() {
               </div>
             ) : recentActivities.length === 0 ? (
               <div className="text-center py-6">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-linear-to-br from-blue-50 to-blue-100 flex items-center justify-center">
-                  <FileText className="h-10 w-10 text-blue-400" />
+                <div className="w-24 h-24 mx-auto mb-3 relative">
+                  <Image
+                    src="/empty-activity-illustration.svg"
+                    alt="No activity"
+                    fill
+                    className="object-contain"
+                    unoptimized
+                  />
                 </div>
-                <p className="text-gray-600 text-sm mb-4">
+                <p className="text-gray-600 text-sm mb-3">
                   No recent activity yet. Start by uploading a contract or job
                   description
                 </p>
@@ -241,22 +245,24 @@ export default function DashboardPage() {
         </Card>
 
         {/* Profile Card */}
-        <Card className="border border-gray-100 shadow-md rounded-3xl bg-white">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-bold text-gray-900">Profile</CardTitle>
+        <Card className="border-0 shadow-sm rounded-2xl bg-white">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-bold text-gray-900">
+              Profile
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center space-x-3 mb-6">
+            <div className="flex items-center space-x-3 mb-4">
               {user?.image ? (
                 <Image
                   src={user.image}
                   alt={user.fullname || "User"}
-                  width={56}
-                  height={56}
-                  className="w-14 h-14 rounded-full object-cover border-2 border-blue-100"
+                  width={48}
+                  height={48}
+                  className="w-12 h-12 rounded-full object-cover border-2 border-blue-100"
                 />
               ) : (
-                <div className="w-14 h-14 rounded-full bg-linear-to-br from-[#0c1b8a] to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#0c1b8a] to-blue-600 flex items-center justify-center text-white font-bold text-lg">
                   {user?.fullname?.charAt(0).toUpperCase() || "A"}
                 </div>
               )}
@@ -264,13 +270,15 @@ export default function DashboardPage() {
                 <p className="font-bold text-gray-900 text-base">
                   {user?.fullname || "aflah"}
                 </p>
-                <p className="text-gray-500 text-sm">{user?.email || "aflah@mail.com"}</p>
+                <p className="text-gray-500 text-sm">
+                  {user?.email || "aflah@mail.com"}
+                </p>
               </div>
             </div>
             <Button
               asChild
               size="sm"
-              className="w-full rounded-xl bg-white border border-gray-200 text-gray-700 hover:border-[#0c1b8a] hover:text-[#0c1b8a] hover:bg-blue-50 font-semibold transition-all shadow-sm"
+              className="w-full rounded-xl bg-white border border-gray-200 text-gray-700 hover:border-[#0c1b8a] hover:text-[#0c1b8a] hover:bg-blue-50 font-semibold transition-all"
             >
               <Link href="/dashboard/profile">Edit Profile</Link>
             </Button>
