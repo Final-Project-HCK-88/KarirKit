@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/context/auth-context";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -94,45 +95,64 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      {/* Welcome Section */}
-      <div className="mb-12">
-        <div className="inline-flex items-center space-x-2 bg-blue-50 border border-blue-100 rounded-full px-4 py-2 mb-4">
-          <span className="text-sm font-medium text-[#0c1b8a]">
-            ✨ Welcome back!
-          </span>
+    <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-8">
+      {/* Hero Section with Image */}
+      <div className="grid lg:grid-cols-2 gap-8 items-center mb-16">
+        {/* Left Content */}
+        <div>
+          <div className="inline-flex items-center space-x-2 bg-blue-50 border border-blue-100 rounded-full px-4 py-2 mb-4">
+            <span className="text-sm font-medium text-[#0c1b8a]">
+              ✨ Welcome back!
+            </span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 leading-tight">
+            Hello, {user?.fullname || "aflah"}!
+          </h1>
+          <p className="text-xl text-gray-600">
+            Ready to take your career to nenext level?
+          </p>
         </div>
-        <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-3">
-          Hello, {user?.fullname || "User"}!
-        </h1>
-        <p className="text-xl text-gray-600">
-          Ready to take your career to the next level?
-        </p>
+
+        {/* Right Image - Professional illustration */}
+        <div className="hidden lg:block relative">
+          <div className="relative w-full h-[500px]">
+            <Image
+              src="/illustration-dashboard.svg"
+              alt="Professional working illustration"
+              fill
+              className="object-contain"
+              priority
+              unoptimized
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Feature Grid */}
-      <div className="grid md:grid-cols-3 gap-6 lg:gap-8 mb-12">
+      {/* Feature Cards - Clean & Modern */}
+      <div className="grid md:grid-cols-3 gap-6 mb-16">
         {features.map((feature) => {
           const Icon = feature.icon;
           return (
             <Link key={feature.title} href={feature.href}>
-              <Card className="group h-full hover:shadow-2xl transition-all duration-300 cursor-pointer border-0 bg-white rounded-2xl hover:-translate-y-2">
-                <CardHeader className="pb-4">
+              <Card className="group h-full hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 bg-white rounded-3xl">
+                <CardHeader className="pb-4 space-y-4">
                   <div
-                    className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform duration-300`}
+                    className={`w-16 h-16 rounded-2xl bg-linear-to-br ${feature.color} flex items-center justify-center text-white shadow-md`}
                   >
-                    <Icon className="h-6 w-6" />
+                    <Icon className="h-7 w-7" />
                   </div>
-                  <CardTitle className="text-xl font-bold text-gray-900">
-                    {feature.title}
-                  </CardTitle>
-                  <CardDescription className="text-gray-600">
-                    {feature.description}
-                  </CardDescription>
+                  <div>
+                    <CardTitle className="text-xl font-bold text-gray-900 mb-2">
+                      {feature.title}
+                    </CardTitle>
+                    <CardDescription className="text-gray-600 text-sm leading-relaxed">
+                      {feature.description}
+                    </CardDescription>
+                  </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                   <Button
-                    variant="ghost"
+                    variant="link"
                     className="gap-2 text-[#0c1b8a] hover:text-blue-700 font-semibold p-0 h-auto"
                   >
                     Get Started{" "}
@@ -145,36 +165,41 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* Quick Links */}
-      <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
-        <Card className="border-0 shadow-lg rounded-2xl">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-gray-900">
-              <History className="h-5 w-5 text-[#0c1b8a]" />
+      {/* Bottom Section - Recent Activity & Profile */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Recent Activity Card */}
+        <Card className="border border-gray-100 shadow-md rounded-3xl bg-white">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-900">
+              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                <History className="h-4 w-4 text-[#0c1b8a]" />
+              </div>
               Recent Activity
             </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className="h-12 bg-gray-100 rounded-lg animate-pulse"
+                    className="h-14 bg-gray-50 rounded-xl animate-pulse"
                   />
                 ))}
               </div>
             ) : recentActivities.length === 0 ? (
-              <div>
-                <p className="text-gray-600 text-sm mb-3">
+              <div className="text-center py-6">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-linear-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+                  <FileText className="h-10 w-10 text-blue-400" />
+                </div>
+                <p className="text-gray-600 text-sm mb-4">
                   No recent activity yet. Start by uploading a contract or job
-                  description.
+                  description
                 </p>
                 <Button
                   asChild
-                  variant="outline"
                   size="sm"
-                  className="rounded-xl border-gray-200 hover:border-[#0c1b8a] hover:text-[#0c1b8a] font-medium transition-all"
+                  className="rounded-xl bg-white border border-gray-200 text-gray-700 hover:border-[#0c1b8a] hover:text-[#0c1b8a] hover:bg-blue-50 font-medium transition-all shadow-sm"
                 >
                   <Link href="/dashboard/contract-analysis">Get Started</Link>
                 </Button>
@@ -184,17 +209,17 @@ export default function DashboardPage() {
                 {recentActivities.map((activity) => (
                   <div
                     key={activity.id}
-                    className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group"
+                    className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors group border border-transparent hover:border-gray-200"
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                        <FileText className="h-4 w-4 text-[#0c1b8a]" />
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                        <FileText className="h-5 w-5 text-[#0c1b8a]" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-semibold text-gray-900 truncate">
                           {activity.fileName}
                         </p>
-                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                           <Clock className="h-3 w-3" />
                           {formatDate(activity.uploadedAt)}
                         </p>
@@ -206,7 +231,7 @@ export default function DashboardPage() {
                   asChild
                   variant="ghost"
                   size="sm"
-                  className="w-full mt-2 text-[#0c1b8a] hover:text-blue-700 hover:bg-blue-50 font-medium"
+                  className="w-full mt-3 text-[#0c1b8a] hover:text-blue-700 hover:bg-blue-50 font-semibold rounded-xl"
                 >
                   <Link href="/dashboard/history">View All →</Link>
                 </Button>
@@ -215,37 +240,37 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-gray-900">Profile</CardTitle>
+        {/* Profile Card */}
+        <Card className="border border-gray-100 shadow-md rounded-3xl bg-white">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg font-bold text-gray-900">Profile</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center space-x-2">
-                {user?.image ? (
-                  <img
-                    src={user.image}
-                    alt={user.fullname || "User"}
-                    className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0c1b8a] to-blue-600 flex items-center justify-center text-white font-bold">
-                    {user?.fullname?.charAt(0).toUpperCase() || "U"}
-                  </div>
-                )}
-                <div>
-                  <p className="font-semibold text-gray-900">
-                    {user?.fullname || "Not set"}
-                  </p>
-                  <p className="text-gray-500 text-xs">{user?.email}</p>
+            <div className="flex items-center space-x-3 mb-6">
+              {user?.image ? (
+                <Image
+                  src={user.image}
+                  alt={user.fullname || "User"}
+                  width={56}
+                  height={56}
+                  className="w-14 h-14 rounded-full object-cover border-2 border-blue-100"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-linear-to-br from-[#0c1b8a] to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
+                  {user?.fullname?.charAt(0).toUpperCase() || "A"}
                 </div>
+              )}
+              <div>
+                <p className="font-bold text-gray-900 text-base">
+                  {user?.fullname || "aflah"}
+                </p>
+                <p className="text-gray-500 text-sm">{user?.email || "aflah@mail.com"}</p>
               </div>
             </div>
             <Button
               asChild
-              variant="outline"
               size="sm"
-              className="mt-4 rounded-xl border-gray-200 hover:border-[#0c1b8a] hover:text-[#0c1b8a] font-medium transition-all"
+              className="w-full rounded-xl bg-white border border-gray-200 text-gray-700 hover:border-[#0c1b8a] hover:text-[#0c1b8a] hover:bg-blue-50 font-semibold transition-all shadow-sm"
             >
               <Link href="/dashboard/profile">Edit Profile</Link>
             </Button>
