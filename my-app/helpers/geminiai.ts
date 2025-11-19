@@ -377,9 +377,10 @@ export async function matchJobsWithAIRealtime(preferences: {
 
   console.log(`Found ${linkedInJobs.length} jobs from LinkedIn`);
 
-  // Format jobs data for AI (limit to 15 to avoid token overflow)
-  const jobsToAnalyze = linkedInJobs.slice(0, 15);
+  // Format jobs data for AI (limit to 10 to avoid token overflow and reduce processing time)
+  const jobsToAnalyze = linkedInJobs.slice(0, 10);
   console.log(`Analyzing ${jobsToAnalyze.length} jobs with AI...`);
+  console.log(`⏱️  Estimated processing time: 20-40 seconds`);
 
   const jobsData = jobsToAnalyze.map((job: LinkedInJob, index: number) => ({
     id: job.jobId || `linkedin-${index}`,
@@ -392,47 +393,36 @@ export async function matchJobsWithAIRealtime(preferences: {
     jobUrl: job.jobUrl,
   }));
 
-  // Create AI prompt for intelligent filtering
+  // Create AI prompt for intelligent filtering (simplified to reduce token usage)
   const prompt = `
-You are an expert job matching AI assistant. Based on the user preferences below, analyze ALL the available jobs from LinkedIn and score each one.
+Match ${jobsData.length} jobs with preferences:
+Position: ${preferences.position} | Location: ${
+    preferences.location
+  } | Industry: ${preferences.industry} | Salary: ${
+    preferences.expectedSalary
+  } IDR${skillsArray.length > 0 ? ` | Skills: ${skillsArray.join(", ")}` : ""}
 
-User Preferences:
-- Location: ${preferences.location}
-- Industry: ${preferences.industry}
-- Expected Salary: ${preferences.expectedSalary} (in IDR)
-- Skills: ${skillsArray.length > 0 ? skillsArray.join(", ") : "Not specified"}
-- Position: ${preferences.position}
+Jobs:
+${JSON.stringify(jobsData)}
 
-Available Jobs from LinkedIn:
-${JSON.stringify(jobsData, null, 2)}
+For each job, add:
+- matchScore: 0-100 (position>location>salary>industry)
+- matchReason: ONE sentence max (20 words)
 
-Instructions:
-1. Analyze each job against the user preferences
-2. Consider matching factors:
-   - Job title relevance to the desired position
-   - Location match (consider remote, hybrid, on-site)
-   - Salary alignment (if provided)
-   - Industry alignment (infer from job title and company)
-   - Skills match (infer required skills from job title and description)
-   - Company reputation and size
-   - Date posted (prefer recent postings)
-3. Score ALL jobs based on match quality
-4. Rank them by match quality (best match first)
-5. For each job, add:
-   - "matchScore" (0-100): Overall match quality score
-   - "matchReason": Brief explanation (2-3 sentences) why it's a good fit or not
-
-Return ONLY a valid JSON array with ALL jobs scored and ranked. Each job should include all original fields plus:
-- matchScore: number between 0-100
-- matchReason: string explaining the match
-
-IMPORTANT: Return ONLY the JSON array without any markdown formatting, code blocks, or additional text. Include ALL jobs from the list.
+Return ONLY valid JSON array. No markdown, no text, just [{...}, {...}].
 `;
 
   console.log("Sending jobs to AI for intelligent matching...");
+  console.log(`📝 Prompt length: ${prompt.length} characters`);
 
   try {
-    const aiResponse = await generateGeminiContent(prompt, 60000); // 60 second timeout for thorough analysis
+    // For OpenAI, we need to pass higher max_tokens via generateOpenAIContent directly
+    let aiResponse: string;
+    if (USE_OPENAI) {
+      aiResponse = await generateOpenAIContent(prompt, "gpt-4o-mini", 4000); // Increase from 2000 to 4000 tokens
+    } else {
+      aiResponse = await generateGeminiContent(prompt, 90000); // 90 second timeout for Gemini
+    }
 
     if (!aiResponse) {
       throw new Error("Failed to generate response from AI");
@@ -448,31 +438,65 @@ IMPORTANT: Return ONLY the JSON array without any markdown formatting, code bloc
       cleanedResponse = cleanedResponse.replace(/```\n?/g, "");
     }
 
-    const matchedJobs = JSON.parse(cleanedResponse);
-    console.log(`AI matched and scored ${matchedJobs.length} jobs`);
+    // Try to repair truncated JSON if it ends abruptly
+    if (!cleanedResponse.endsWith("]") && !cleanedResponse.endsWith("}")) {
+      console.warn("⚠️  Response appears truncated, attempting to repair...");
+      // Find the last complete job object
+      const lastCompleteObj = cleanedResponse.lastIndexOf("}");
+      if (lastCompleteObj > 0) {
+        cleanedResponse =
+          cleanedResponse.substring(0, lastCompleteObj + 1) + "]";
+        console.log("🔧 Repaired JSON by truncating to last complete object");
+      }
+    }
+
+    let matchedJobs;
+    try {
+      matchedJobs = JSON.parse(cleanedResponse);
+    } catch (parseError) {
+      console.error(
+        "❌ JSON parse failed, raw response:",
+        cleanedResponse.substring(0, 500)
+      );
+      throw parseError;
+    }
+    console.log(
+      `✅ AI successfully matched and scored ${matchedJobs.length} jobs`
+    );
+
+    // Validate that we got all jobs back
+    if (matchedJobs.length !== jobsData.length) {
+      console.warn(
+        `⚠️  Expected ${jobsData.length} jobs but got ${matchedJobs.length}`
+      );
+    }
 
     // Sort by match score descending
     matchedJobs.sort(
-      (a: any, b: any) => (b.matchScore || 0) - (a.matchScore || 0)
+      (a: { matchScore?: number }, b: { matchScore?: number }) =>
+        (b.matchScore || 0) - (a.matchScore || 0)
     );
 
     return matchedJobs;
   } catch (aiError) {
+    console.error("❌ AI matching failed:");
     console.error(
-      "AI matching failed, returning top 10 jobs without AI scoring:",
-      aiError
+      "Error details:",
+      aiError instanceof Error ? aiError.message : aiError
     );
+    console.error("Stack:", aiError instanceof Error ? aiError.stack : "N/A");
+    console.log("🔄 Falling back to basic job list without AI scoring");
 
-    // Fallback: Return first 10 jobs with basic match score
-    return jobsData.slice(0, 10).map((job, index) => ({
+    // Fallback: Return all jobs with basic match score
+    return jobsData.map((job, index) => ({
       ...job,
-      matchScore: 70 - index * 5, // Simple scoring: 70, 65, 60, 55...
-      matchReason: `This job matches your search for ${
-        preferences.position
-      } in ${preferences.location}. ${
+      matchScore: Math.max(50, 75 - index * 3), // Simple scoring: 75, 72, 69... minimum 50
+      matchReason: `This ${job.position} position at ${job.company} in ${
+        job.location
+      } matches your search criteria for ${preferences.position}. ${
         job.salary
-          ? `Salary: ${job.salary}`
-          : "Please check the job posting for salary details."
+          ? `Salary: ${job.salary}.`
+          : "Salary information not available - please check the job posting."
       }`,
     }));
   }

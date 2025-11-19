@@ -24,14 +24,21 @@ interface SalaryData {
   salaryTrend: number;
 }
 
+interface Sources {
+  primary: string;
+  secondary: string[];
+}
+
 export function SalaryBenchmarkResult({
   result,
   jobTitle,
   onReset,
+  sources,
 }: {
   result: SalaryData;
   jobTitle: string;
   onReset: () => void;
+  sources?: Sources;
 }) {
   const chartData = [
     {
@@ -185,6 +192,69 @@ export function SalaryBenchmarkResult({
           </ul>
         </CardContent>
       </Card>
+
+      {/* Data Sources Disclaimer */}
+      {sources && (
+        <Card className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <span className="text-lg">ℹ️</span>
+              Data Sources
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* Primary Source */}
+            <div>
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                Primary Source:
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                📊 {sources.primary}
+              </p>
+            </div>
+
+            {/* Secondary Sources */}
+            {sources.secondary && sources.secondary.length > 0 && (
+              <div>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Additional Web Sources (via Tavily AI):
+                </p>
+                <ul className="space-y-2">
+                  {sources.secondary.map((source, index) => (
+                    <li
+                      key={index}
+                      className="text-xs text-gray-600 dark:text-gray-400 pl-4 border-l-2 border-gray-300 dark:border-gray-700"
+                    >
+                      {source.startsWith("http") ? (
+                        <a
+                          href={source}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+                        >
+                          🔗 {source}
+                        </a>
+                      ) : (
+                        <span>📄 {source}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Disclaimer */}
+            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-500 dark:text-gray-500 italic">
+                💡 This salary benchmark is generated using AI-powered analysis
+                combining authoritative salary surveys and real-time web data.
+                Results should be used as guidance only and may vary based on
+                company size, benefits, and specific job requirements.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Actions */}
       <div className="flex gap-4 justify-center">

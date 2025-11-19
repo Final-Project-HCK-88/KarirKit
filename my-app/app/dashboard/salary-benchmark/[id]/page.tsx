@@ -27,6 +27,11 @@ interface BenchmarkResponse {
   sources?: string[];
 }
 
+interface Sources {
+  primary: string;
+  secondary: string[];
+}
+
 interface UserPreferences {
   jobTitle: string;
   location: string;
@@ -43,6 +48,10 @@ export default function SalaryBenchmarkResultPage() {
   const [jobTitle, setJobTitle] = useState("");
   const [userPreferences, setUserPreferences] =
     useState<UserPreferences | null>(null);
+  const [sources, setSources] = useState<Sources>({
+    primary: "Indonesia Salary Guide 2025 By Persolkelly",
+    secondary: [],
+  });
 
   useEffect(() => {
     const fetchBenchmark = async () => {
@@ -113,6 +122,14 @@ export default function SalaryBenchmarkResultPage() {
           recommendations: data.negotiationTips || [],
           salaryTrend: 0, // Not provided by API
         });
+
+        // Set sources with primary (hardcoded) and secondary (from API/Tavily)
+        if (data.sources && data.sources.length > 0) {
+          setSources({
+            primary: "Indonesia Salary Guide 2025 By Persolkelly",
+            secondary: data.sources,
+          });
+        }
 
         // If preferences not fetched, fallback to generic
         if (!preferences) {
@@ -234,6 +251,7 @@ export default function SalaryBenchmarkResultPage() {
         result={result}
         jobTitle={jobTitle}
         onReset={handleReset}
+        sources={sources}
       />
     </div>
   );

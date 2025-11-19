@@ -115,15 +115,15 @@ export function   LandingPage() {
   return (
     <div className="min-h-screen bg-linear-to-br from-sky-50 via-blue-50 to-indigo-100">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#1e40af] shadow-lg">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0c1b8a] shadow-lg">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <Link
               href={user ? "/dashboard" : "/"}
               className="flex items-center space-x-3 group"
             >
-              <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-md group-hover:shadow-xl transition-shadow">
-                <span className="text-2xl font-bold text-[#1e40af]">K</span>
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center shadow-md group-hover:shadow-xl transition-shadow">
+                <img src="/kaka.png" alt="KarirKit Logo" className="w-10 h-10" />
               </div>
               <span className="text-2xl font-bold text-white">KarirKit</span>
             </Link>
@@ -146,19 +146,19 @@ export function   LandingPage() {
                 </>
               ) : (
                 <>
-                  <Button
+                  {/* <Button
                     asChild
                     variant="ghost"
                     className="text-white hover:text-white hover:bg-white/20 font-semibold rounded-full px-6"
                   >
                     <Link href="/login">Sign In</Link>
-                  </Button>
+                  </Button> */}
                   <Button
                     asChild
                     className="bg-white text-[#1e40af] hover:bg-blue-50 font-bold rounded-full shadow-lg hover:shadow-xl transition-all px-8"
                   >
                     <Link href="/register">
-                      Get Started
+                      Sign Up
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Link>
                   </Button>
@@ -194,17 +194,9 @@ export function   LandingPage() {
                   size="lg"
                   className="bg-[#1e40af] hover:bg-[#1e3a8a] text-white font-bold rounded-full px-10 py-6 text-lg shadow-xl hover:shadow-2xl transition-all"
                 >
-                  <Link href={user ? "/dashboard" : "/register"}>
+                  <Link href={user ? "/dashboard" : "/login"}>
                     Get Started
                   </Link>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="border-2 border-gray-300 hover:border-[#1e40af] hover:bg-[#1e40af] hover:text-white font-bold rounded-full px-10 py-6 text-lg transition-all"
-                >
-                  <Link href="#features">Demo</Link>
                 </Button>
               </div>
             </div>
