@@ -176,11 +176,11 @@ export function   LandingPage() {
             {/* Left Content */}
             <div className="space-y-8">
               <h1 className="text-6xl lg:text-7xl font-bold leading-tight">
-                <span className="text-gray-900">Your AI</span>
+                <span className="text-gray-900">Get Matched, </span>
                 <br />
-                <span className="text-gray-900">Career</span>
-                <br />
-                <span className="text-gray-900">Assistant</span>
+                <span className="text-gray-900">Get Hired. </span>
+                {/* <br />
+                <span className="text-gray-900">Assistant</span> */}
               </h1>
 
               <p className="text-xl text-gray-700 leading-relaxed max-w-lg">
