@@ -16,10 +16,7 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 w-full bg-[#0c1b8a] shadow-sm border-b border-[#0c1b8a]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
-          <Link
-            href={user ? "/dashboard" : "/"}
-            className="flex items-center space-x-3"
-          >
+          <Link href={"/"} className="flex items-center space-x-3">
             <Image
               src="/kaka.png"
               alt="KarirKit Logo"

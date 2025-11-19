@@ -140,13 +140,20 @@ export function SalaryBenchmarkResult({
                 { name: "Max", value: result.max },
                 { name: "You", value: result.yourSalary },
               ]}
+              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
-              <YAxis />
+              <YAxis
+                tickFormatter={(value) => {
+                  const millions = value / 1000000;
+                  return `${millions.toFixed(0)} JT`;
+                }}
+                width={80}
+              />
               <Tooltip
                 formatter={(value) =>
-                  `Rp ${((value as number) / 1000000).toFixed(1)}jt`
+                  `Rp ${((value as number) / 1000000).toFixed(1)} Juta`
                 }
               />
               <Bar dataKey="value" fill="#3b82f6">
