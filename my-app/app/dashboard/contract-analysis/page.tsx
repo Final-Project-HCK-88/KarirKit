@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader } from "lucide-react";
 import { ContractAnalysisResult } from "@/components/contract-analysis-result";
 import UploadPdfComponent from "@/components/UploadPdfComponent";
+import Swal from "sweetalert2";
 
 interface AnalysisResult {
   redFlags: string[];
@@ -18,7 +19,40 @@ interface AnalysisResult {
 export default function ContractAnalysisPage() {
   const [step, setStep] = useState<"upload" | "analyzing" | "result">("upload");
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [isCheckingCV, setIsCheckingCV] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    checkUserCV();
+  }, []);
+
+  const checkUserCV = async () => {
+    try {
+      const response = await fetch("/api/cv");
+      const data = await response.json();
+
+      if (!data.hasCV) {
+        // User hasn't uploaded CV yet
+        const result = await Swal.fire({
+          title: "CV Required",
+          text: "Please upload your CV first to use this feature",
+          icon: "info",
+          confirmButtonColor: "#0c1b8a",
+          confirmButtonText: "Go to Profile",
+          allowOutsideClick: false,
+        });
+
+        if (result.isConfirmed) {
+          router.push("/dashboard/profile");
+        }
+      } else {
+        setIsCheckingCV(false);
+      }
+    } catch (error) {
+      console.error("Error checking CV:", error);
+      setIsCheckingCV(false);
+    }
+  };
 
   const handleAnalyze = async () => {
     setStep("analyzing");
@@ -51,6 +85,15 @@ export default function ContractAnalysisPage() {
       setStep("result");
     }, 2000);
   };
+
+  if (isCheckingCV) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-96 space-y-4">
+        <Loader className="h-8 w-8 text-primary animate-spin" />
+        <p className="text-muted-foreground">Checking your profile...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 py-8 max-w-4xl mx-auto">

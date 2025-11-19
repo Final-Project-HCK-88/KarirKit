@@ -23,7 +23,7 @@ import {
   Briefcase,
 } from "lucide-react";
 
-export function LandingPage() {
+export function   LandingPage() {
   const { user, logout } = useAuth();
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
 
@@ -285,9 +285,9 @@ export function LandingPage() {
                 01
               </div>
               <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
-                Real-time salary
+                Salary 
                 <br />
-                benchmarking
+                benchmark
               </h2>
               <p className="text-xl text-gray-600 leading-relaxed">
                 Understand market salary ranges instantly.
@@ -425,7 +425,7 @@ export function LandingPage() {
                 <br />
                 contract
                 <br />
-                intelligence
+                Summary
               </h2>
               <p className="text-xl text-gray-600 leading-relaxed">
                 Scan contracts instantly and reveal risky clauses.
