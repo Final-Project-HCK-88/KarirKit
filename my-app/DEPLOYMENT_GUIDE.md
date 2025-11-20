@@ -40,7 +40,7 @@ Click **Environment Variables** and add ALL of these:
 
 ```env
 # Database
-MONGODB_URI=mongodb+srv://karirkit_db:Hacktiv8@karirkit-88.aarqpl5.mongodb.net/?appName=KarirKit-88
+MONGODB_URI=
 
 # Authentication
 JWT_SECRET=KarirKit_HCK_88
