@@ -358,7 +358,10 @@ export default function JobMatchingPage() {
       console.error("Error creating job matching:", error);
       Swal.fire({
         title: "Error!",
-        text: error instanceof Error ? error.message : "Failed to create job matching",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Failed to create job matching",
         icon: "error",
         confirmButtonColor: "#0c1b8a",
       });
@@ -677,7 +680,10 @@ export default function JobMatchingPage() {
                               Expected Salary
                             </p>
                             <p className="font-semibold text-sm text-green-600">
-                              Rp {(option.expectedSalary * 1000000).toLocaleString('id-ID')}
+                              Rp{" "}
+                              {(option.expectedSalary * 1000000).toLocaleString(
+                                "id-ID"
+                              )}
                             </p>
                           </div>
                         </div>
@@ -828,7 +834,7 @@ export default function JobMatchingPage() {
                           className="h-12 text-base"
                         />
                         <p className="text-xs text-muted-foreground">
-                          The job title you're interested in
+                          The job title you&apos;re interested in
                         </p>
                       </div>
 
@@ -1138,7 +1144,7 @@ export default function JobMatchingPage() {
                   Finding Your Perfect Job Matches
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  We're searching through thousands of opportunities...
+                  We&apos;re searching through thousands of opportunities...
                 </p>
               </div>
               <div className="flex gap-2 mt-4">

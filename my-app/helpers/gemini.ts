@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 // Bersihkan API key dari spasi
-const apiKey = (process.env.Gemini_API_Key || "").replace(/\s+/g, "");
+const apiKey = (process.env.GEMINI_API_KEY || "").replace(/\s+/g, "");
 
 if (!apiKey) {
   console.error("⚠️ Gemini API Key is not configured");

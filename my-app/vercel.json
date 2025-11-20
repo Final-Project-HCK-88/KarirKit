@@ -1,0 +1,24 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["sin1"],
+  "env": {
+    "MONGODB_URI": "@mongodb-uri",
+    "JWT_SECRET": "@jwt-secret",
+    "GEMINI_API_KEY": "@gemini-api-key",
+    "OPENAI_API_KEY": "@openai-api-key",
+    "CLOUDINARY_URL": "@cloudinary-url",
+    "N8N_WEBHOOK_URL": "@n8n-webhook-url",
+    "TAVILY_API_KEY": "@tavily-api-key",
+    "NEXTAUTH_SECRET": "@nextauth-secret",
+    "GOOGLE_CLIENT_ID": "@google-client-id",
+    "GOOGLE_CLIENT_SECRET": "@google-client-secret"
+  },
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 60
+    }
+  }
+}

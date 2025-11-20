@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY || "dummy-key-for-build",
 });
 
 export async function generateOpenAIContent(
@@ -9,6 +9,10 @@ export async function generateOpenAIContent(
   model: string = "gpt-4o-mini",
   maxTokens: number = 4000
 ): Promise<string> {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is not set in environment variables");
+  }
+
   try {
     console.log(`🤖 Calling OpenAI ${model}...`);
 
@@ -43,6 +47,10 @@ export async function generateOpenAIContent(
 }
 
 export async function generateOpenAIEmbedding(text: string): Promise<number[]> {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is not set in environment variables");
+  }
+
   try {
     console.log("🔢 Generating OpenAI embedding...");
 

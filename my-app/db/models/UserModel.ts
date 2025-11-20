@@ -64,9 +64,13 @@ class UserModel {
   }
   static async updateProfile(email: string, updates: Partial<UserType>) {
     const col = await this.collection();
-    const result = await col.updateOne({ email }, { $set: updates });
+    const result = await col.findOneAndUpdate(
+      { email },
+      { $set: updates },
+      { returnDocument: "after" }
+    );
 
-    if (result.matchedCount === 0) {
+    if (!result) {
       throw { message: "User not found", status: 404 };
     }
     return result;

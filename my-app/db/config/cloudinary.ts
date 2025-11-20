@@ -1,7 +1,7 @@
 import { v2 as cloudinary } from "cloudinary";
 
 // Parse Cloudinary URL
-const cloudinaryUrl = process.env.cloudinary_url || "";
+const cloudinaryUrl = process.env.CLOUDINARY_URL || "";
 const match = cloudinaryUrl.match(/cloudinary:\/\/(\d+):([^@]+)@(.+)/);
 
 if (match) {
